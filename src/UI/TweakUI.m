@@ -1,4 +1,4 @@
-// TweakUI.m — 悬浮窗 UI 实现（简约风格）
+#import <UIKit/UIKit.h>
 #import "../Config.h"
 #import "../AntiDetect.h"
 #import "../MemoryUtils.h"
