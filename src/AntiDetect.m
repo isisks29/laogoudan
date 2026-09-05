@@ -113,6 +113,17 @@ static int hook_stat(const char *path, void *buf) {
 
 
 @implementation AntiDetect
+static AntiDetect *_g_instance = nil;
++ (instancetype)sharedInstance {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _g_instance = [[self alloc] init];
+    });
+    return _g_instance;
+}
+- (void)startProtect {
+    [AntiDetect installAll];
+}
 
 + (void)installPtraceHook {
     struct rebinding r = {"ptrace", (void *)hook_ptrace, (void **)&orig_ptrace};
