@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-14
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies
         run: brew install ldid xz
@@ -22,44 +22,45 @@ jobs:
 
       - name: Download SDKs
         run: |
+          set -e
           curl -L -o /tmp/sdks.tar.gz https://github.com/theos/sdks/archive/master.tar.gz
           tar -xzf /tmp/sdks.tar.gz -C /tmp
-          # 只复制 iPhoneOS SDK（跳过 AppleTVOS/WatchOS，老版本有损坏符号链接会导致 cp 失败）
           mkdir -p $THEOS/sdks
           for sdk in /tmp/sdks-master/iPhoneOS*.sdk; do
             [ -d "$sdk" ] && ditto "$sdk" "$THEOS/sdks/$(basename $sdk)"
           done
-          echo "可用 iPhoneOS SDK:"
           ls $THEOS/sdks/
 
       - name: Build
         run: |
+          set -o pipefail
           export THEOS=$THEOS
           make clean
           make 2>&1 | tee build_log.txt
 
-      - name: Package
+      - name: Package deb
         run: |
+          set -o pipefail
           export THEOS=$THEOS
           make package FINALPACKAGE=1 2>&1 | tee -a build_log.txt
 
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
+      - name: Upload dylib artifact
+        uses: actions/upload-artifact@v5
         with:
           name: GameTweak-binary
           path: |
-            **/*.dylib
-            **/*.framework/GameTweak
+            ./*.dylib
+          if-no-files-found: error
 
-      - name: Upload deb
-        uses: actions/upload-artifact@v4
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v5
         with:
           name: GameTweak-deb
           path: "**/*.deb"
 
       - name: Upload build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-log
           path: build_log.txt
