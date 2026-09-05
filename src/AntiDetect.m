@@ -1,76 +1,7 @@
-// AntiDetect.m — 反检测实现（精简安全版）
-#include "fishhook/fishhook.h"
+// AntiDetect.m — 反检测（安全版：仅 NSFileManager 越狱路径隐藏）
 #import "AntiDetect.h"
-#import <sys/sysctl.h>
-#import <unistd.h>
-#import <mach-o/dyld.h>
-#import <dlfcn.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
-
-#ifndef PT_DENY_ATTACH
-#define PT_DENY_ATTACH 31
-#endif
-#ifndef P_TRACED
-#define P_TRACED 0x00000800
-#endif
-
-static int (*orig_ptrace)(int, pid_t, caddr_t, int);
-static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *, size_t);
-static const char *(*orig_dyld_get_image_name)(uint32_t);
-
-static char *g_own_path = NULL;
-static char *g_fake_path = NULL;
-
-#pragma mark - ptrace Hook
-static int hook_ptrace(int request, pid_t pid, caddr_t addr, int data) {
-    if (request == PT_DENY_ATTACH) return 0;
-    return orig_ptrace ? orig_ptrace(request, pid, addr, data) : -1;
-}
-
-#pragma mark - sysctl Hook
-static int hook_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
-    int ret = orig_sysctl ? orig_sysctl(name, namelen, oldp, oldlenp, newp, newlen) : -1;
-    if (ret == 0 && namelen >= 3 && name[0] == CTL_KERN && name[1] == KERN_PROC &&
-        name[2] == KERN_PROC_PID && oldp && oldlenp && *oldlenp >= sizeof(struct kinfo_proc)) {
-        struct kinfo_proc *info = (struct kinfo_proc *)oldp;
-        info->kp_proc.p_flag &= ~P_TRACED;
-    }
-    return ret;
-}
-
-#pragma mark - dyld 镜像隐藏
-static const char *hook_dyld_get_image_name(uint32_t idx) {
-    const char *name = orig_dyld_get_image_name(idx);
-    if (name && g_own_path && strcmp(name, g_own_path) == 0) {
-        return g_fake_path ?: "/usr/lib/libSystem.B.dylib";
-    }
-    return name;
-}
-
-static void detect_own_path(void) {
-    uint32_t count = _dyld_image_count();
-    for (uint32_t i = 0; i < count; i++) {
-        const char *name = _dyld_get_image_name(i);
-        if (name && (strstr(name, "GameTweak") || strstr(name, "MyTweak"))) {
-            g_own_path = strdup(name);
-            break;
-        }
-    }
-    // 找不到自己就不隐藏，绝不 fallback 到游戏主二进制
-    if (!g_own_path) return;
-
-    for (uint32_t i = 0; i < count; i++) {
-        const char *name = _dyld_get_image_name(i);
-        if (name && (strstr(name, "libSystem") || strstr(name, "libobjc"))) {
-            if (strcmp(name, g_own_path) != 0) {
-                g_fake_path = strdup(name);
-                break;
-            }
-        }
-    }
-    if (!g_fake_path) g_fake_path = strdup("/usr/lib/libSystem.B.dylib");
-}
 
 @implementation AntiDetect
 
@@ -86,31 +17,10 @@ static void detect_own_path(void) {
 }
 
 + (void)installAll {
-    [self installPtraceHook];
-    [self installSysctlHook];
-    [self installDyldHide];
     [self installJailbreakHide];
 }
 
-+ (void)installPtraceHook {
-    struct rebinding r = {"ptrace", (void *)hook_ptrace, (void **)&orig_ptrace};
-    rebind_symbols(&r, 1);
-}
-
-+ (void)installSysctlHook {
-    struct rebinding r = {"sysctl", (void *)hook_sysctl, (void **)&orig_sysctl};
-    rebind_symbols(&r, 1);
-}
-
-+ (void)installDyldHide {
-    detect_own_path();
-    if (!g_own_path) return;  // 找不到自己就跳过
-    struct rebinding r = {"_dyld_get_image_name", (void *)hook_dyld_get_image_name, (void **)&orig_dyld_get_image_name};
-    rebind_symbols(&r, 1);
-}
-
 + (void)installJailbreakHide {
-    // 只做 NSFileManager swizzle，移除 fopen/access/stat fishhook（会导致游戏读资源崩溃）
     Method orig1 = class_getInstanceMethod([NSFileManager class], @selector(fileExistsAtPath:));
     Method new1 = class_getInstanceMethod([NSFileManager class], @selector(ad_fileExistsAtPath:));
     if (orig1 && new1) method_exchangeImplementations(orig1, new1);
