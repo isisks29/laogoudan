@@ -26,7 +26,7 @@ void dylib_initialize(void)
                             [[NSNotificationCenter defaultCenter] removeObserver:observer];
                             observer = nil;
                         }
-                        [[AntiDetect sharedInstance] startProtect];
+                     //   [[AntiDetect sharedInstance] startProtect];   //
                         [[FeatureManager sharedManager] setup];
                         [[MacroManager shared] setup];
                         [TweakUI showFloatingWindow];
