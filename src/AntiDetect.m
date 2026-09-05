@@ -124,7 +124,14 @@ static AntiDetect *_g_instance = nil;
 - (void)startProtect {
     [AntiDetect installAll];
 }
-
++ (void)installAll {
+    [self installPtraceHook];
+    [self installSysctlHook];
+    [self installDyldHide];
+    [self installJailbreakHide];
+    [AntiDetect runInjectorScan];
+    [AntiDetect denyDebug];
+}
 + (void)installPtraceHook {
     struct rebinding r = {"ptrace", (void *)hook_ptrace, (void **)&orig_ptrace};
     rebind_symbols(&r, 1);
