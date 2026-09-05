@@ -1,13 +1,12 @@
 // AntiDetect.m — 反检测实现（五层合一）
 #import "AntiDetect.h"
-@implementation AntiDetect
-
-#import "AntiDetect.h"
 #import "fishhook/fishhook.h"
 #import <sys/sysctl.h>
 #import <unistd.h>
 #import <mach-o/dyld.h>
 #import <dlfcn.h>
+#import <Foundation/Foundation.h>
+#import <objc/runtime.h>
 
 #ifndef PT_DENY_ATTACH
 #define PT_DENY_ATTACH 31
@@ -34,11 +33,6 @@ static int hook_ptrace(int request, pid_t pid, caddr_t addr, int data) {
     return orig_ptrace ? orig_ptrace(request, pid, addr, data) : -1;
 }
 
-+ (void)installPtraceHook {
-    struct rebinding r = {"ptrace", (void *)hook_ptrace, (void **)&orig_ptrace};
-    rebind_symbols(&r, 1);
-}
-
 #pragma mark - 第二层：sysctl Hook（清除 P_TRACED）
 
 static int hook_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
@@ -49,11 +43,6 @@ static int hook_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, vo
         info->kp_proc.p_flag &= ~P_TRACED;  // 清除调试标志
     }
     return ret;
-}
-
-+ (void)installSysctlHook {
-    struct rebinding r = {"sysctl", (void *)hook_sysctl, (void **)&orig_sysctl};
-    rebind_symbols(&r, 1);
 }
 
 #pragma mark - 第三层：dyld 镜像隐藏
@@ -92,12 +81,6 @@ static void detect_own_path(void) {
     if (!g_fake_path) g_fake_path = strdup("/usr/lib/libSystem.B.dylib");
 }
 
-+ (void)installDyldHide {
-    detect_own_path();
-    struct rebinding r = {"_dyld_get_image_name", (void *)hook_dyld_get_image_name, (void **)&orig_dyld_get_image_name};
-    rebind_symbols(&r, 1);
-}
-
 #pragma mark - 第四层：越狱检测反制
 
 static bool is_jb_path(const char *path) {
@@ -128,6 +111,25 @@ static int hook_stat(const char *path, void *buf) {
     return orig_stat ? orig_stat(path, buf) : -1;
 }
 
+
+@implementation AntiDetect
+
++ (void)installPtraceHook {
+    struct rebinding r = {"ptrace", (void *)hook_ptrace, (void **)&orig_ptrace};
+    rebind_symbols(&r, 1);
+}
+
++ (void)installSysctlHook {
+    struct rebinding r = {"sysctl", (void *)hook_sysctl, (void **)&orig_sysctl};
+    rebind_symbols(&r, 1);
+}
+
++ (void)installDyldHide {
+    detect_own_path();
+    struct rebinding r = {"_dyld_get_image_name", (void *)hook_dyld_get_image_name, (void **)&orig_dyld_get_image_name};
+    rebind_symbols(&r, 1);
+}
+
 + (void)installJailbreakHide {
     // Method Swizzling NSFileManager
     Method orig1 = class_getInstanceMethod([NSFileManager class], @selector(fileExistsAtPath:));
@@ -145,7 +147,7 @@ static int hook_stat(const char *path, void *buf) {
 
 @end
 
-// NSFileManager 分类
+// NSFileManager 分类，独立实现块
 @implementation NSFileManager (AntiDetect)
 - (BOOL)ad_fileExistsAtPath:(NSString *)path {
     NSArray *jb = @[@"/Applications/Cydia.app", @"/Library/MobileSubstrate", @"/bin/bash", @"/etc/apt"];
@@ -156,8 +158,7 @@ static int hook_stat(const char *path, void *buf) {
 }
 @end
 
-#pragma mark - 第五层：注入器环境感知
-
+// AntiDetect分类 Injector，独立实现块
 @implementation AntiDetect (Injector)
 
 + (void)runInjectorScan {
@@ -178,13 +179,13 @@ static int hook_stat(const char *path, void *buf) {
         if (found) break;
     }
     if (found) {
-        // 检测到注入器，执行更严格的隐藏（这里可以加额外逻辑）
+        // 检测到注入器，执行更严格的隐藏
         [self denyDebug];
     }
 }
 
 + (void)denyDebug {
-    
+    // ptrace API 在公开iOS SDK不可用，空实现
 }
 
 + (void)installAll {
