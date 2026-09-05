@@ -42,8 +42,10 @@ typedef void Il2CppImage;
 // 调用静态方法
 + (Il2CppObject *)callStaticMethod:(const MethodInfo *)method args:(void **)args;
 
-// 便捷方法：调用 setter（设置 bool 属性）
+// 便捷方法：调用 setter（设置 bool 属性，自动加 set_ 前缀）
 + (BOOL)setBoolProperty:(NSString *)propertyName className:(NSString *)className instance:(Il2CppObject *)instance value:(BOOL)value;
+// 便捷方法：直接调用 bool 方法（不加 set_ 前缀，用于 FreeTypePress 这类非 setter 方法）
++ (BOOL)callBoolMethod:(NSString *)methodName className:(NSString *)className instance:(Il2CppObject *)instance value:(BOOL)value;
 
 // 便捷方法：调用 setter（设置 float 属性）
 + (BOOL)setFloatProperty:(NSString *)propertyName className:(NSString *)className instance:(Il2CppObject *)instance value:(float)val;
@@ -59,5 +61,3 @@ typedef void Il2CppImage;
 + (Il2CppObject *)getSkillManager;  // 技能/按键管理器（宏的核心对象）
 
 @end
-
-#endif // IL2CPP_UTILS_H
