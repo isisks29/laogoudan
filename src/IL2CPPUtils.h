@@ -61,3 +61,5 @@ typedef void Il2CppImage;
 + (Il2CppObject *)getSkillManager;  // 技能/按键管理器（宏的核心对象）
 
 @end
+
+#endif // IL2CPP_UTILS_H
