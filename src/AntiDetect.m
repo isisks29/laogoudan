@@ -1,5 +1,5 @@
 // AntiDetect.m — 反检测实现（五层合一）
-#include "fishhook.h"
+#include "fishhook/fishhook.h"
 #import "AntiDetect.h"
 #import "fishhook/fishhook.h"
 #import <sys/sysctl.h>
