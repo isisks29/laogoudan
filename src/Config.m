@@ -8,7 +8,6 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         instance = [[GlobalConfig alloc] init];
-        [instance load];
     });
     return instance;
 }
@@ -16,48 +15,48 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // 默认值
-        _antiDetectEnabled = YES;
-        _ptraceHook = YES;
-        _sysctlHook = YES;
-        _dyldHide = YES;
-        _jailbreakHide = YES;
-        _injectorDetect = YES;
-        
-        // 功能数值（NSString，用户可输入任意值）
-        _mingziValue = @"1.5";
-        _nianheValue = @"1.7";
-        _shiyeValue = @"50";
-        _huitanValue = @"1.0";
-        
-        // 解限配置
-        _jielimWriteValue = @"10";
-        _jielimWriteAsInt = NO;  // 默认按float写入
-        _jielimSearchValue = @"100";
-        
-        // 宏默认配置
-        _shiliufen = (MacroConfig){NO, 0.85f, 0.75f, 35.0f, 47.0f, 20.0f};
-        _tuqiu = (MacroConfig){NO, 0.75f, 0.85f, 40.0f, 50.0f, 30.0f};
-        _sifen = (MacroConfig){NO, 0.90f, 0.65f, 30.0f, 30.0f, 100.0f};
-        
-        _menuVisible = NO;
-        _currentTab = 1;
+        [self resetDefaults];
     }
     return self;
 }
 
+- (void)resetDefaults {
+    // ===== 功能开关：全部默认关闭 =====
+    _shuangliandian = NO;
+    _jielim = NO;
+    _lingmin = NO;
+    _jieduan = NO;
+    _mingzidaxiao = NO;
+    _nianhe = NO;
+    _shiyedaxiao = NO;
+    _qiutineixian = NO;
+    _fangluzhi = NO;
+    _yaoganhuitan = NO;
+    _peelEnabled = NO;
+
+    // 功能数值
+    _mingziValue = @"1.5";
+    _nianheValue = @"1.7";
+    _shiyeValue = @"50";
+    _huitanValue = @"1.0";
+
+    // 解限
+    _jielimWriteValue = @"10";
+    _jielimWriteAsInt = NO;
+    _jielimSearchValue = @"100";
+
+    // 宏默认参数（位置/大小保留，enabled默认关）
+    _shiliufen = (MacroConfig){NO, 0.85f, 0.75f, 35.0f, 47.0f, 20.0f};
+    _tuqiu = (MacroConfig){NO, 0.75f, 0.85f, 40.0f, 50.0f, 30.0f};
+    _sifen = (MacroConfig){NO, 0.90f, 0.65f, 30.0f, 30.0f, 100.0f};
+
+    _menuVisible = NO;
+    _currentTab = 0;
+}
+
 - (void)save {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    
-    // 反检测
-    [ud setBool:_antiDetectEnabled forKey:@"ad_enabled"];
-    [ud setBool:_ptraceHook forKey:@"ad_ptrace"];
-    [ud setBool:_sysctlHook forKey:@"ad_sysctl"];
-    [ud setBool:_dyldHide forKey:@"ad_dyldhide"];
-    [ud setBool:_jailbreakHide forKey:@"ad_jbhide"];
-    [ud setBool:_injectorDetect forKey:@"ad_injector"];
-    
-    // 功能开关
+
     [ud setBool:_shuangliandian forKey:@"f_sld"];
     [ud setBool:_jielim forKey:@"f_jlm"];
     [ud setBool:_lingmin forKey:@"f_lm"];
@@ -68,23 +67,21 @@
     [ud setBool:_qiutineixian forKey:@"f_qtnx"];
     [ud setBool:_fangluzhi forKey:@"f_flz"];
     [ud setBool:_yaoganhuitan forKey:@"f_yght"];
-    
-    // 功能数值
+    [ud setBool:_peelEnabled forKey:@"f_peel"];
+
     [ud setObject:_mingziValue forKey:@"v_mingzi"];
     [ud setObject:_nianheValue forKey:@"v_nianhe"];
     [ud setObject:_shiyeValue forKey:@"v_shiye"];
     [ud setObject:_huitanValue forKey:@"v_huitan"];
-    
-    // 解限配置
+
     [ud setObject:_jielimWriteValue forKey:@"jl_write"];
     [ud setBool:_jielimWriteAsInt forKey:@"jl_asint"];
     [ud setObject:_jielimSearchValue forKey:@"jl_search"];
-    
-    // 宏配置
+
     [self saveMacro:_shiliufen forKey:@"m_16"];
     [self saveMacro:_tuqiu forKey:@"m_tq"];
     [self saveMacro:_sifen forKey:@"m_4"];
-    
+
     [ud synchronize];
 }
 
@@ -100,37 +97,38 @@
 
 - (void)load {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    
-    _antiDetectEnabled = [ud boolForKey:@"ad_enabled"];
-    _ptraceHook = [ud boolForKey:@"ad_ptrace"];
-    _sysctlHook = [ud boolForKey:@"ad_sysctl"];
-    _dyldHide = [ud boolForKey:@"ad_dyldhide"];
-    _jailbreakHide = [ud boolForKey:@"ad_jbhide"];
-    _injectorDetect = [ud boolForKey:@"ad_injector"];
-    
-    _shuangliandian = [ud boolForKey:@"f_sld"];
-    _jielim = [ud boolForKey:@"f_jlm"];
-    _lingmin = [ud boolForKey:@"f_lm"];
-    _jieduan = [ud boolForKey:@"f_jd"];
-    _mingzidaxiao = [ud boolForKey:@"f_mzdx"];
-    _nianhe = [ud boolForKey:@"f_nh"];
-    _shiyedaxiao = [ud boolForKey:@"f_sydx"];
-    _qiutineixian = [ud boolForKey:@"f_qtnx"];
-    _fangluzhi = [ud boolForKey:@"f_flz"];
-    _yaoganhuitan = [ud boolForKey:@"f_yght"];
-    
+
+    // 功能数值（保留用户设置）
     if ([ud objectForKey:@"v_mingzi"]) _mingziValue = [ud stringForKey:@"v_mingzi"];
     if ([ud objectForKey:@"v_nianhe"]) _nianheValue = [ud stringForKey:@"v_nianhe"];
     if ([ud objectForKey:@"v_shiye"]) _shiyeValue = [ud stringForKey:@"v_shiye"];
     if ([ud objectForKey:@"v_huitan"]) _huitanValue = [ud stringForKey:@"v_huitan"];
-    
+
     if ([ud objectForKey:@"jl_write"]) _jielimWriteValue = [ud stringForKey:@"jl_write"];
     if ([ud objectForKey:@"jl_asint"]) _jielimWriteAsInt = [ud boolForKey:@"jl_asint"];
     if ([ud objectForKey:@"jl_search"]) _jielimSearchValue = [ud stringForKey:@"jl_search"];
-    
+
+    // 宏参数（位置大小保留，enabled强制关）
     _shiliufen = [self loadMacro:@"m_16" default:_shiliufen];
     _tuqiu = [self loadMacro:@"m_tq" default:_tuqiu];
     _sifen = [self loadMacro:@"m_4" default:_sifen];
+
+    // ===== 关键：所有开关强制关闭，不记忆上次状态 =====
+    _shuangliandian = NO;
+    _jielim = NO;
+    _lingmin = NO;
+    _jieduan = NO;
+    _mingzidaxiao = NO;
+    _nianhe = NO;
+    _shiyedaxiao = NO;
+    _qiutineixian = NO;
+    _fangluzhi = NO;
+    _yaoganhuitan = NO;
+    _peelEnabled = NO;
+    _shiliufen.enabled = NO;
+    _tuqiu.enabled = NO;
+    _sifen.enabled = NO;
+    _menuVisible = NO;
 }
 
 - (MacroConfig)loadMacro:(NSString *)key default:(MacroConfig)def {
@@ -149,21 +147,7 @@
 }
 
 - (void)reset {
-    // 重置为默认值（重新 init）
-    GlobalConfig *fresh = [[GlobalConfig alloc] init];
-    [self setValuesForKeysWithDictionary:@{
-        @"antiDetectEnabled": @(fresh.antiDetectEnabled),
-        @"mingziValue": fresh.mingziValue,
-        @"nianheValue": fresh.nianheValue,
-        @"shiyeValue": fresh.shiyeValue,
-        @"huitanValue": fresh.huitanValue,
-        @"jielimWriteValue": fresh.jielimWriteValue,
-        @"jielimWriteAsInt": @(fresh.jielimWriteAsInt),
-        @"jielimSearchValue": fresh.jielimSearchValue,
-    }];
-    _shiliufen = fresh.shiliufen;
-    _tuqiu = fresh.tuqiu;
-    _sifen = fresh.sifen;
+    [self resetDefaults];
     [self save];
 }
 
