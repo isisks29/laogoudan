@@ -1,9 +1,0 @@
-Package: com.example.gametweak
-Name: GameTweak
-Version: 1.0.0
-Architecture: iphoneos-arm
-Description: 游戏插件模板：反检测 + 功能开关 + 宏操作
-Maintainer: Your Name
-Author: Your Name
-Section: Tweaks
-Depends: mobilesubstrate, firmware (>= 12.0)
