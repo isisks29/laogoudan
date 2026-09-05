@@ -139,6 +139,17 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     return YES;
 }
 
++ (BOOL)callBoolMethod:(NSString *)methodName className:(NSString *)className instance:(Il2CppObject *)instance value:(BOOL)value {
+    // 直接调用方法名，不加 set_ 前缀（用于 FreeTypePress 这类非 setter 方法）
+    const MethodInfo *method = [self getMethod:methodName className:className argsCount:1];
+    if (!method) return NO;
+    
+    BOOL val = value;
+    void *args[1] = { &val };
+    [self callMethod:method instance:instance args:args];
+    return YES;
+}
+
 + (BOOL)setFloatProperty:(NSString *)propertyName className:(NSString *)className instance:(Il2CppObject *)instance value:(float)val {
     NSString *setterName = [NSString stringWithFormat:@"set_%@", propertyName];
     const MethodInfo *method = [self getMethod:setterName className:className argsCount:1];
