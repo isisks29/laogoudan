@@ -1,9 +1,7 @@
 #import "PeelManager.h"
-#import "IL2CPPUtils.h"
-#import "Config.h"
+#import <objc/runtime.h>
 
 @interface PeelManager ()
-@property (strong) NSTimer *monitorTimer;
 @property (assign) BOOL peeling;
 @end
 
@@ -25,142 +23,105 @@
 - (void)startPeel {
     if (self.peeling) return;
     self.peeling = YES;
-    [self applyPeel];
-    // 持续监控，防止游戏刷新皮肤后失效（对应 JuziHub startReapplyMonitor）
-    self.monitorTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
-                                                           target:self
-                                                         selector:@selector(applyPeel)
-                                                         userInfo:nil
-                                                          repeats:YES];
-    [[NSRunLoop mainRunLoop] addTimer:self.monitorTimer forMode:NSRunLoopCommonModes];
+    [self swizzleNSData];
 }
 
 - (void)stopPeel {
     self.peeling = NO;
-    [self.monitorTimer invalidate];
-    self.monitorTimer = nil;
+    // 不做 unswizzle（保持简单），peeling=NO 后 hook 方法直接放行
 }
 
-- (void)applyPeel {
-    if (!self.peeling) return;
-    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-
-    // 方案：通过 GameCoreCenter 获取球列表，遍历每个球的渲染器，设置透明材质
-    // 对应 JuziHub 的 kGCC_BallDic（球字典）和 _Ball0~_Ball57（球遮罩）
-
-    // 尝试获取球管理器（不同游戏类名可能不同，这里用常见命名尝试）
-    Il2CppClass *ballMgrClass = [IL2CPPUtils getClass:@"BallManager"];
-    if (!ballMgrClass) ballMgrClass = [IL2CPPUtils getClass:@"BallSpawnManager"];
-    if (!ballMgrClass) ballMgrClass = [IL2CPPUtils getClass:@"GameBallManager"];
-
-    if (ballMgrClass) {
-        // 尝试获取球管理器单例
-        const MethodInfo *getInst = [IL2CPPUtils getMethod:@"get_Instance" class:ballMgrClass argsCount:0];
-        if (!getInst) getInst = [IL2CPPUtils getMethod:@"get_instance" class:ballMgrClass argsCount:0];
-        if (getInst) {
-            Il2CppObject *ballMgr = [IL2CPPUtils callStaticMethod:getInst args:NULL];
-            if (ballMgr) {
-                [self peelBallsInManager:ballMgr];
-                return;
-            }
-        }
-    }
-
-    // fallback：直接从 GameCoreCenter 尝试获取球列表字段
-    NSArray *fieldNames = @[@"balls", @"ballList", @"_balls", @"m_balls", @"ballDic", @"allBalls"];
-    for (NSString *fieldName in fieldNames) {
-        Il2CppObject *ballsObj = [IL2CPPUtils getField:fieldName instance:gameCore];
-        if (ballsObj) {
-            [self peelBallObject:ballsObj];
-        }
-    }
+#pragma mark - 判断是否为皮肤资源
++ (BOOL)isSkinResourceURL:(NSURL *)url {
+    if (!url) return NO;
+    NSString *urlStr = url.absoluteString ?: @"";
+    NSString *path = url.path ?: @"";
+    return [self isSkinResourceString:urlStr] || [self isSkinResourceString:path];
 }
 
-- (void)peelBallsInManager:(Il2CppObject *)ballMgr {
-    NSArray *fieldNames = @[@"balls", @"ballList", @"_balls", @"m_balls", @"activeBalls", @"allBalls"];
-    for (NSString *fieldName in fieldNames) {
-        Il2CppObject *ballsObj = [IL2CPPUtils getField:fieldName instance:ballMgr];
-        if (ballsObj) {
-            [self peelBallObject:ballsObj];
-        }
-    }
++ (BOOL)isSkinResourcePath:(NSString *)path {
+    if (!path) return NO;
+    return [self isSkinResourceString:path];
 }
 
-- (void)peelBallObject:(Il2CppObject *)ballOrList {
-    // 尝试获取球的 GameObject / Renderer，设置透明
-    // 对应 JuziHub 的 m_Skin（材质）和 _BallMask（遮罩）
-    Il2CppObject *gameObj = [IL2CPPUtils getField:@"gameObject" instance:ballOrList];
-    if (!gameObj) gameObj = [IL2CPPUtils getField:@"_gameObject" instance:ballOrList];
-
-    if (gameObj) {
-        // 获取 Transform → 找 Renderer 组件
-        const MethodInfo *getTransform = [IL2CPPUtils getMethod:@"get_transform" className:@"GameObject" argsCount:0];
-        if (getTransform) {
-            Il2CppObject *transform = [IL2CPPUtils callMethod:getTransform instance:gameObj args:NULL];
-            if (transform) {
-                // 遍历子物体找 Renderer
-                [self setTransparentOnTransform:transform];
-            }
-        }
-    }
-
-    // 直接尝试设置球的材质颜色为透明
-    Il2CppObject *renderer = [IL2CPPUtils getField:@"renderer" instance:ballOrList];
-    if (!renderer) renderer = [IL2CPPUtils getField:@"_renderer" instance:ballOrList];
-    if (!renderer) renderer = [IL2CPPUtils getField:@"m_Renderer" instance:ballOrList];
-    if (renderer) {
-        [self setRendererTransparent:renderer];
-    }
++ (BOOL)isSkinResourceString:(NSString *)s {
+    if (!s || s.length == 0) return NO;
+    NSString *lower = s.lowercaseString;
+    // 皮肤配置 ID（JuziHub 中的 keyskin_xxxx）
+    if ([lower containsString:@"keyskin_"]) return YES;
+    // 球材质资源
+    if ([lower containsString:@"/ballmaterial/"]) return YES;
+    if ([lower containsString:@"alltextures/ballmaterial"]) return YES;
+    // 孢子/刺球特效（ciqiu = 刺球，球球大作战的孢子特效）
+    if ([lower containsString:@"ingameeffect"] && [lower containsString:@"ciqiu"]) return YES;
+    // 皮肤配置文件
+    if ([lower containsString:@"skin"] && ([lower containsString:@".plist"] ||
+        [lower containsString:@".json"] || [lower containsString:@".dat"] ||
+        [lower containsString:@".bytes"])) return YES;
+    // 关键词/孢子配置
+    if (([lower containsString:@"keyword"] || [lower containsString:@"spore"]) &&
+        ([lower containsString:@".plist"] || [lower containsString:@".json"] ||
+         [lower containsString:@".dat"] || [lower containsString:@".bytes"])) return YES;
+    return NO;
 }
 
-- (void)setTransparentOnTransform:(Il2CppObject *)transform {
-    // 获取 childCount
-    const MethodInfo *getChildCount = [IL2CPPUtils getMethod:@"get_childCount" className:@"Transform" argsCount:0];
-    if (!getChildCount) return;
+#pragma mark - method swizzle
+- (void)swizzleNSData {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        Class cls = [NSData class];
 
-    int childCount = 0;
-    void *retBuf = &childCount;
-    [IL2CPPUtils callMethod:getChildCount instance:transform args:NULL returnBuf:retBuf];
+        // +dataWithContentsOfURL:
+        Method orig1 = class_getClassMethod(cls, @selector(dataWithContentsOfURL:));
+        Method new1 = class_getClassMethod(cls, @selector(peel_dataWithContentsOfURL:));
+        if (orig1 && new1) method_exchangeImplementations(orig1, new1);
 
-    for (int i = 0; i < childCount; i++) {
-        const MethodInfo *getChild = [IL2CPPUtils getMethod:@"GetChild" className:@"Transform" argsCount:1];
-        if (!getChild) break;
-        int idx = i;
-        void *args[1] = { &idx };
-        Il2CppObject *child = [IL2CPPUtils callMethod:getChild instance:transform args:args];
-        if (child) {
-            // 获取 child 的 GameObject → GetComponent(Renderer)
-            const MethodInfo *getGO = [IL2CPPUtils getMethod:@"get_gameObject" className:@"Transform" argsCount:0];
-            if (getGO) {
-                Il2CppObject *childGO = [IL2CPPUtils callMethod:getGO instance:child args:NULL];
-                if (childGO) {
-                    const MethodInfo *getComp = [IL2CPPUtils getMethod:@"GetComponent" className:@"GameObject" argsCount:1];
-                    // 简化：直接尝试设置材质
-                }
-            }
-            [self setTransparentOnTransform:child];
-        }
-    }
+        // +dataWithContentsOfURL:options:error:
+        Method orig2 = class_getClassMethod(cls, @selector(dataWithContentsOfURL:options:error:));
+        Method new2 = class_getClassMethod(cls, @selector(peel_dataWithContentsOfURL:options:error:));
+        if (orig2 && new2) method_exchangeImplementations(orig2, new2);
+
+        // +dataWithContentsOfFile:
+        Method orig3 = class_getClassMethod(cls, @selector(dataWithContentsOfFile:));
+        Method new3 = class_getClassMethod(cls, @selector(peel_dataWithContentsOfFile:));
+        if (orig3 && new3) method_exchangeImplementations(orig3, new3);
+
+        // +dataWithContentsOfFile:options:error:
+        Method orig4 = class_getClassMethod(cls, @selector(dataWithContentsOfFile:options:error:));
+        Method new4 = class_getClassMethod(cls, @selector(peel_dataWithContentsOfFile:options:error:));
+        if (orig4 && new4) method_exchangeImplementations(orig4, new4);
+    });
 }
 
-- (void)setRendererTransparent:(Il2CppObject *)renderer {
-    // 获取 material
-    const MethodInfo *getMat = [IL2CPPUtils getMethod:@"get_material" className:@"Renderer" argsCount:0];
-    if (!getMat) getMat = [IL2CPPUtils getMethod:@"get_sharedMaterial" className:@"Renderer" argsCount:0];
-    if (!getMat) return;
-
-    Il2CppObject *material = [IL2CPPUtils callMethod:getMat instance:renderer args:NULL];
-    if (!material) return;
-
-    // 设置材质颜色 alpha 为 0（透明）
-    const MethodInfo *setColor = [IL2CPPUtils getMethod:@"set_color" className:@"Material" argsCount:1];
-    if (setColor) {
-        // Color 是值类型，需要在栈上构造
-        float color[4] = {1.0f, 1.0f, 1.0f, 0.0f};  // RGBA，alpha=0
-        void *args[1] = { color };
-        [IL2CPPUtils callMethod:setColor instance:material args:args];
+#pragma mark - Hook 方法
++ (NSData *)peel_dataWithContentsOfURL:(NSURL *)url {
+    if ([PeelManager shared].peeling && [PeelManager isSkinResourceURL:url]) {
+        return nil;  // 拦截皮肤资源，游戏加载失败回退默认皮肤
     }
+    return [self peel_dataWithContentsOfURL:url];  // 已交换，调用原始实现
+}
+
++ (NSData *)peel_dataWithContentsOfURL:(NSURL *)url options:(NSDataReadingOptions)mask error:(NSError **)error {
+    if ([PeelManager shared].peeling && [PeelManager isSkinResourceURL:url]) {
+        if (error) *error = [NSError errorWithDomain:@"PeelManager" code:-1 userInfo:@{NSLocalizedDescriptionKey:@"skin resource blocked"}];
+        return nil;
+    }
+    return [self peel_dataWithContentsOfURL:url options:mask error:error];
+}
+
++ (NSData *)peel_dataWithContentsOfFile:(NSString *)path {
+    if ([PeelManager shared].peeling && [PeelManager isSkinResourcePath:path]) {
+        return nil;
+    }
+    return [self peel_dataWithContentsOfFile:path];
+}
+
++ (NSData *)peel_dataWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)mask error:(NSError **)error {
+    if ([PeelManager shared].peeling && [PeelManager isSkinResourcePath:path]) {
+        if (error) *error = [NSError errorWithDomain:@"PeelManager" code:-1 userInfo:@{NSLocalizedDescriptionKey:@"skin resource blocked"}];
+        return nil;
+    }
+    return [self peel_dataWithContentsOfFile:path options:mask error:error];
 }
 
 @end
