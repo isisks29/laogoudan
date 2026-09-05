@@ -1,7 +1,7 @@
-// AntiDetect.h — 反检测总入口（合并 ptrace/sysctl/dyld隐藏/越狱反制/注入器感知）
+#import <Foundation/Foundation.h>
+
 #ifndef ANTI_DETECT_H
 #define ANTI_DETECT_H
-#import <Foundation/Foundation.h>
 
 @interface AntiDetect : NSObject
 + (instancetype)sharedInstance;
@@ -18,3 +18,5 @@
 + (void)runInjectorScan;
 + (void)denyDebug;
 @end
+
+#endif //❗❗这个 #endif 千万不能丢，头文件保护闭合
