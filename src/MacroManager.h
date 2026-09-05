@@ -18,6 +18,7 @@
 @interface MacroManager : NSObject
 
 + (instancetype)shared;
+- (void)setup;
 
 // 创建所有宏按钮（添加到游戏窗口上）
 - (void)setupMacroButtonsInWindow:(UIWindow *)window;
