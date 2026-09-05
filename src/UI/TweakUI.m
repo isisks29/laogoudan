@@ -1,8 +1,8 @@
 // TweakUI.m — 悬浮窗 UI 实现（简约风格）
-#import "TweakUI.h"
 #import "../Config.h"
-#import "FeatureManager.h"
-#import "MacroManager.h"
+#import "../AntiDetect.h"
+#import "../MemoryUtils.h"
+#import "../IL2CPPUtils.h"
 
 // 颜色常量
 #define COLOR_BG [UIColor colorWithWhite:0.12 alpha:0.95]
