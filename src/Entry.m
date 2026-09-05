@@ -6,6 +6,7 @@
 #import "FeatureManager.h"
 #import "MacroManager.h"
 #import "UI/TweakUI.h"
+#import "MethodSwap.h"
 
 __attribute__((constructor))
 void dylib_initialize(void)
