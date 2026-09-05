@@ -23,6 +23,17 @@
 @end
 
 @implementation FeatureManager
+static FeatureManager *_inst = nil;
++ (instancetype)sharedManager {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        _inst = [[self alloc] init];
+    });
+    return _inst;
+}
+- (void)setup {
+    //留空，后续写逻辑
+}
 
 + (instancetype)shared {
     static FeatureManager *instance = nil;
