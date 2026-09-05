@@ -114,15 +114,6 @@ static int hook_stat(const char *path, void *buf) {
 
 @implementation AntiDetect
 
-+ (void)installAll {
-    [self installPtraceHook];
-    [self installSysctlHook];
-    [self installDyldHide];
-    [self installJailbreakHide];
-    [AntiDetect runInjectorScan];
-    [AntiDetect denyDebug];
-}
-
 static AntiDetect *_g_instance = nil;
 + (instancetype)sharedInstance {
     static dispatch_once_t onceToken;
