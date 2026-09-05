@@ -4,6 +4,10 @@
 #define FEATURE_MANAGER_H
 
 #import <Foundation/Foundation.h>
+@interface FeatureManager : NSObject
++ (instancetype)sharedManager;
+- (void)setup;
+@end
 
 @interface FeatureManager : NSObject
 
