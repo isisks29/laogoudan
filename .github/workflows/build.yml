@@ -1,0 +1,60 @@
+name: Build GameTweak
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  THEOS: ${{ github.workspace }}/theos
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install ldid xz
+
+      - name: Clone Theos
+        run: git clone --recursive --depth 1 https://github.com/theos/theos.git $THEOS
+
+      - name: Download SDKs
+        run: |
+          curl -L -o /tmp/sdks.tar.gz https://github.com/theos/sdks/archive/master.tar.gz
+          tar -xzf /tmp/sdks.tar.gz -C /tmp
+          cp -r /tmp/sdks-master/*.sdk $THEOS/sdks/
+          ls $THEOS/sdks/
+
+      - name: Build
+        run: |
+          export THEOS=$THEOS
+          make clean
+          make 2>&1 | tee build_log.txt
+
+      - name: Package
+        run: |
+          export THEOS=$THEOS
+          make package FINALPACKAGE=1 2>&1 | tee -a build_log.txt
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameTweak-binary
+          path: |
+            **/*.dylib
+            **/*.framework/GameTweak
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameTweak-deb
+          path: "**/*.deb"
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build_log.txt
