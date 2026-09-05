@@ -5,9 +5,10 @@
 #import <Foundation/Foundation.h>
 
 @interface AntiDetect : NSObject
-
++ (instancetype)sharedInstance;
 // 安装所有反检测 Hook（在 constructor 中调用）
 + (void)installAll;
+- (void)startProtect;
 
 // 单独安装各层
 + (void)installPtraceHook;      // Hook ptrace
