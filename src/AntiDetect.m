@@ -9,6 +9,10 @@
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 
+#ifndef P_TRACED
+#define P_TRACED 0x00000800
+#endif
+
 #ifndef PT_DENY_ATTACH
 #define PT_DENY_ATTACH 31
 #endif
