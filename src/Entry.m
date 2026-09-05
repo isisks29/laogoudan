@@ -1,4 +1,3 @@
-// src/Entry.m
 #include <dlfcn.h>
 #import <Foundation/Foundation.h>
 #import "Config.h"
@@ -16,7 +15,6 @@ void dylib_initialize(void)
         [[Config shared] loadConfig];
         [[FeatureManager sharedManager] setup];
         [[MacroManager shared] setup];
-        
         dispatch_async(dispatch_get_main_queue(), ^{
             [TweakUI showFloatingWindow];
         });
