@@ -1,15 +1,7 @@
 // AntiDetect.m — 反检测实现（五层合一）
 #import "AntiDetect.h"
 @implementation AntiDetect
-// 全部 +(void) 、-(void)方法全部放在这对 @implementation … @end 中间
 
-// ptrace函数直接删除，iOS公开SDK没有ptrace头文件和符号
-// 删除整个 denyDebug 方法内部 ptrace(PT_DENY_ATTACH,0,0,0);
-- (void)denyDebug {
-    // 空实现，该功能直接废弃
-}
-
-@end
 #import "AntiDetect.h"
 #import "fishhook/fishhook.h"
 #import <sys/sysctl.h>
