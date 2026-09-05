@@ -1,13 +1,25 @@
+name: Build GameTweak‑Clang
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
       - name: Compile iOS dylib (Pure Clang, NO Theos)
         run: |
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           OUTPUT_DYLIB=GameTweak.dylib
-
-          # find输出存入数组，不用字符串变量
-          mapfile -t SRC_FILES < <(find src -type f \( -name "*.m" -o -name "*.c" \))
+          SRC_FILES=()
+          while IFS= read -r file; do
+            SRC_FILES+=("$file")
+          done < <(find src -type f \( -name "*.m" -o -name "*.c" \))
           echo "将要编译的源码列表:"
           printf "%s\n" "${SRC_FILES[@]}"
-
           xcrun clang \
             -target arm64-apple-ios15.0 \
             -isysroot "$SDK_PATH" \
@@ -19,3 +31,9 @@
             -framework CoreGraphics \
             -o "$OUTPUT_DYLIB" \
             "${SRC_FILES[@]}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: GameTweak-binary
+          path: GameTweak.dylib
