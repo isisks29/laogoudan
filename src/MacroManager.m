@@ -351,15 +351,22 @@
 
 - (void)triggerMacro:(NSInteger)type {
     switch (type) {
-        case 0: [self handleShiliufen:YES];
+        case 0:{
+            [self handleShiliufen:YES];
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC),
                            dispatch_get_main_queue(), ^{ [self handleShiliufen:NO]; });
             break;
-        case 1: [self handleTuqiu:YES];
+        }
+        case 1:{
+            [self handleTuqiu:YES];
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC),
                            dispatch_get_main_queue(), ^{ [self handleTuqiu:NO]; });
             break;
-        case 2: [self handleSifen:YES]; break;
+        }
+        case 2:{
+            [self handleSifen:YES];
+            break;
+        }
     }
 }
 
