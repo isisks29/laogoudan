@@ -24,7 +24,12 @@ jobs:
         run: |
           curl -L -o /tmp/sdks.tar.gz https://github.com/theos/sdks/archive/master.tar.gz
           tar -xzf /tmp/sdks.tar.gz -C /tmp
-          cp -r /tmp/sdks-master/*.sdk $THEOS/sdks/
+          # 只复制 iPhoneOS SDK（跳过 AppleTVOS/WatchOS，老版本有损坏符号链接会导致 cp 失败）
+          mkdir -p $THEOS/sdks
+          for sdk in /tmp/sdks-master/iPhoneOS*.sdk; do
+            [ -d "$sdk" ] && ditto "$sdk" "$THEOS/sdks/$(basename $sdk)"
+          done
+          echo "可用 iPhoneOS SDK:"
           ls $THEOS/sdks/
 
       - name: Build
