@@ -6,7 +6,7 @@
 @interface MacroButton : UIView
 @property (assign) NSInteger type;  // 0=16分, 1=吐球, 2=4分
 @property (strong) UILabel *titleLabel;
-@property (assign) BOOL isPressed;
+@property (assign, nonatomic) BOOL isPressed;
 @property (assign) CGPoint startPoint;
 @property (copy) void (^onPress)(BOOL pressed);
 @end
@@ -27,7 +27,7 @@
         NSArray *colors = @[
             [UIColor colorWithRed:1.0 green:0.4 blue:0.4 alpha:1.0],  // 16分-红
             [UIColor colorWithRed:0.4 green:0.8 blue:1.0 alpha:1.0],  // 吐球-蓝
-            [UIColor colorWithRed:0.4 green:1.0 green:0.6 alpha:1.0],  // 4分-绿
+            [UIColor colorWithRed:0.4 green:1.0 blue:0.6 alpha:1.0],  // 4分-绿
         ];
         
         self.layer.borderColor = ((UIColor *)colors[type]).CGColor;
