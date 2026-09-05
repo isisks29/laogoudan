@@ -14,6 +14,7 @@
 #define COLOR_SUBTEXT [UIColor colorWithWhite:0.6 alpha:1.0]
 #define COLOR_ACCENT [UIColor colorWithRed:0.25 green:0.55 blue:1.0 alpha:1.0]
 #define COLOR_TAB_ACTIVE [UIColor colorWithRed:0.25 green:0.55 blue:1.0 alpha:1.0]
+#define COLOR_TEXT_DIM [UIColor colorWithWhite:0.6 alpha:1.0]
 
 // 开关行
 @interface SwitchRow : UIView
@@ -228,6 +229,7 @@
 @end
 
 @implementation TweakUI
+- (void)showUI;
 + (void)showFloatingWindow {
     [[TweakUI shared] showUI];
 }
@@ -523,7 +525,9 @@
         }
         sw.switchCtrl.on = mc.enabled;
         sw.onChange = ^(BOOL on) {
-            MacroConfig c = [[GlobalConfig shared] valueForKey:configKey].pointerValue;
+            NSValue *v = [[GlobalConfig shared] valueForKey:configKey];
+            MacroConfig c;
+            if(v) [v getValue:&c];
             c.enabled = on;
             NSValue *v = [NSValue valueWithBytes:&c objCType:@encode(MacroConfig)];
             [[GlobalConfig shared] setValue:v forKey:configKey];
@@ -536,10 +540,10 @@
         // 配置行
         MacroConfigRow *configRow = [[MacroConfigRow alloc] initWithTitle:@"参数设置"];
         configRow.frame = CGRectMake(12, y, w - 24, [MacroConfigRow rowHeight]);
-        NSValue *val = [cfg valueForKey:configKey];
+        NSValue *val2 = [cfg valueForKey:configKey];
         MacroConfig current;
-        if(val) {
-            [val getValue:&current];
+        if(val2) {
+            [val2 getValue:&current];
         }
         configRow.sizeSlider.slider.value = current.buttonSize;
         configRow.sizeSlider.valueLabel.text = [NSString stringWithFormat:@"%.0f", current.buttonSize];
@@ -549,20 +553,26 @@
         configRow.intervalSlider.valueLabel.text = [NSString stringWithFormat:@"%.0f", current.interval];
         
         configRow.sizeSlider.onChange = ^(float val) {
-            MacroConfig c = [[GlobalConfig shared] valueForKey:configKey].pointerValue;
+            NSValue *v = [[GlobalConfig shared] valueForKey:configKey];
+            MacroConfig c;
+            if(v) [v getValue:&c];
             c.buttonSize = val;
             [[GlobalConfig shared] setValue:[NSValue valueWithBytes:&c objCType:@encode(MacroConfig)] forKey:configKey];
             [[GlobalConfig shared] save];
             [[MacroManager shared] updateButtonPositions];
         };
         configRow.pressSlider.onChange = ^(float val) {
-            MacroConfig c = [[GlobalConfig shared] valueForKey:configKey].pointerValue;
+            NSValue *v = [[GlobalConfig shared] valueForKey:configKey];
+            MacroConfig c;
+            if(v) [v getValue:&c];
             c.pressDuration = val;
             [[GlobalConfig shared] setValue:[NSValue valueWithBytes:&c objCType:@encode(MacroConfig)] forKey:configKey];
             [[GlobalConfig shared] save];
         };
         configRow.intervalSlider.onChange = ^(float val) {
-            MacroConfig c = [[GlobalConfig shared] valueForKey:configKey].pointerValue;
+            NSValue *v = [[GlobalConfig shared] valueForKey:configKey];
+            MacroConfig c;
+            if(v) [v getValue:&c];
             c.interval = val;
             [[GlobalConfig shared] setValue:[NSValue valueWithBytes:&c objCType:@encode(MacroConfig)] forKey:configKey];
             [[GlobalConfig shared] save];
