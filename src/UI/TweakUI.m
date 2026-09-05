@@ -228,6 +228,9 @@
 @end
 
 @implementation TweakUI
++ (void)showFloatingWindow {
+    [[TweakUI shared] showUI];
+}
 
 + (instancetype)shared {
     static TweakUI *instance = nil;
@@ -513,7 +516,11 @@
         SwitchRow *sw = [[SwitchRow alloc] initWithTitle:m[@"title"]];
         sw.frame = CGRectMake(12, y, w - 24, 40);
         NSString *configKey = m[@"config"];
-        MacroConfig mc = [[cfg valueForKey:configKey] pointerValue];
+        NSValue *val = [cfg valueForKey:configKey];
+        MacroConfig mc;
+        if(val) {
+            [val getValue:&mc];
+        }
         sw.switchCtrl.on = mc.enabled;
         sw.onChange = ^(BOOL on) {
             MacroConfig c = [[GlobalConfig shared] valueForKey:configKey].pointerValue;
@@ -529,7 +536,11 @@
         // 配置行
         MacroConfigRow *configRow = [[MacroConfigRow alloc] initWithTitle:@"参数设置"];
         configRow.frame = CGRectMake(12, y, w - 24, [MacroConfigRow rowHeight]);
-        MacroConfig current = [[cfg valueForKey:configKey] pointerValue];
+        NSValue *val = [cfg valueForKey:configKey];
+        MacroConfig current;
+        if(val) {
+            [val getValue:&current];
+        }
         configRow.sizeSlider.slider.value = current.buttonSize;
         configRow.sizeSlider.valueLabel.text = [NSString stringWithFormat:@"%.0f", current.buttonSize];
         configRow.pressSlider.slider.value = current.pressDuration;
