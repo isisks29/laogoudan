@@ -26,11 +26,11 @@ jobs:
             -isysroot "$SDK_PATH" \
             -dynamiclib \
             -fobjc-arc \
-            -fvisibility=hidden \
             -framework UIKit \
             -framework Foundation \
             -framework CoreGraphics \
             -o "$OUTPUT_DYLIB" \
+            -I src/fishhook
             $SRC_FILES
 
       - name: Upload artifact
