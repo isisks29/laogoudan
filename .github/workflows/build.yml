@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Install dependencies
-        run: brew install ldid xz
+        run: brew install ldid xz dpkg
 
       - name: Clone Theos
         run: git clone --recursive --depth 1 https://github.com/theos/theos.git $THEOS
@@ -29,27 +29,33 @@ jobs:
           for sdk in /tmp/sdks-master/iPhoneOS*.sdk; do
             [ -d "$sdk" ] && ditto "$sdk" "$THEOS/sdks/$(basename $sdk)"
           done
-          ls $THEOS/sdks/
 
-      - name: Build
+      - name: Build & Package
         run: |
           set -o pipefail
           export THEOS=$THEOS
           make clean
-          make 2>&1 | tee build_log.txt
+          make package FINALPACKAGE=1 2>&1 | tee build_log.txt
+          # 打印目录用于排错
+          echo "==== .theos/obj 目录 ===="
+          ls -la .theos/obj/
+          echo "==== packages目录 ===="
+          ls -la packages/
 
-      - name: Package deb
+      - name: Extract dylib from deb（兜底方案）
         run: |
-          set -o pipefail
-          export THEOS=$THEOS
-          make package FINALPACKAGE=1 2>&1 | tee -a build_log.txt
+          mkdir -p output_dylib
+          # 从deb包提取dylib，不依赖obj目录
+          dpkg -x packages/*.deb ./output_dylib
 
       - name: Upload dylib artifact
         uses: actions/upload-artifact@v5
         with:
           name: GameTweak-binary
           path: |
+            .theos/obj/release/*.dylib
             .theos/obj/debug/*.dylib
+            output_dylib/Library/MobileSubstrate/DynamicLibraries/*.dylib
           if-no-files-found: error
 
       - name: Upload deb artifact
