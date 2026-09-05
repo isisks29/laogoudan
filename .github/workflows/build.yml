@@ -11,10 +11,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Compile iOS dylib
+      - name: Compile iOS dylib (Pure Clang, NO Theos)
         run: |
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           OUTPUT_DYLIB=GameTweak.dylib
+
+          # find搜集所有真实存在的源码文件，自动跳过空/不存在目录
+          SRC_FILES=$(find src -type f \( -name "*.m" -o -name "*.c" \))
+          echo "将要编译的源码列表:"
+          echo "$SRC_FILES"
 
           xcrun clang \
             -target arm64-apple-ios15.0 \
@@ -26,9 +31,7 @@ jobs:
             -framework Foundation \
             -framework CoreGraphics \
             -o "$OUTPUT_DYLIB" \
-            src/*.m \
-            src/UI/*.m \
-            src/fishhook/*.c
+            $SRC_FILES
 
       - name: Upload artifact
         uses: actions/upload-artifact@v5
