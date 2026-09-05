@@ -5,7 +5,7 @@
 #import "AntiDetect.h"
 #import "FeatureManager.h"
 #import "MacroManager.h"
-#import "TweakUI.h"
+#import "UI/TweakUI.h"
 
 __attribute__((constructor))
 void dylib_initialize(void)
