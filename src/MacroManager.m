@@ -106,6 +106,9 @@
 @end
 
 @implementation MacroManager
+- (void)setup {
+    // 后续写业务，现在留空即可
+}
 
 + (instancetype)shared {
     static MacroManager *instance = nil;
