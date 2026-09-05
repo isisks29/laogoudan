@@ -174,6 +174,7 @@ int rebind_symbols_image(void *header, intptr_t slide,
   return 0;
 }
 
+__attribute__((visibility("default")))
 int rebind_symbols(struct rebinding rebindings[], size_t rebindings_nel) {
   int retval = prepend_rebindings(&_rebindings_head, rebindings, rebindings_nel);
   if (retval < 0) {
