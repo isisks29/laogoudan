@@ -1,5 +1,9 @@
 #import <UIKit/UIKit.h>
 #import "TweakUI.h"
+@interface TweakUI : NSObject
++ (void)showFloatingWindow;
+- (void)showUI;
+@end
 #import "../Config.h"
 #import "../AntiDetect.h"
 #import "../MemoryUtils.h"
@@ -229,7 +233,13 @@
 @end
 
 @implementation TweakUI
-- (void)showUI;
+- (void)showUI {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self setupFloatButton];
+        [self setupMenu];
+    });
+}
+
 + (void)showFloatingWindow {
     [[TweakUI shared] showUI];
 }
@@ -525,12 +535,12 @@
         }
         sw.switchCtrl.on = mc.enabled;
         sw.onChange = ^(BOOL on) {
-            NSValue *v = [[GlobalConfig shared] valueForKey:configKey];
+            NSValue *cv = [[GlobalConfig shared] valueForKey:configKey];
             MacroConfig c;
-            if(v) [v getValue:&c];
+            if(cv) [cv getValue:&c];
             c.enabled = on;
             NSValue *vOut = [NSValue valueWithBytes:&c objCType:@encode(MacroConfig)];
-            [[GlobalConfig shared] setValue:v forKey:configKey];
+            [[GlobalConfig shared] setValue:vOut forKey:configKey];
             [[GlobalConfig shared] save];
             [[MacroManager shared] updateButtonPositions];
         };
