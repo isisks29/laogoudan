@@ -57,3 +57,18 @@ static int prepend_rebindings(struct rebindings_entry **rebindings_head,
   *rebindings_head = new_entry;
   return 0;
 }
+__attribute__((visibility("default")))
+int rebind_symbols(struct rebinding rebindings[], size_t rebindings_nel) {
+  int retval = prepend_rebindings(&_rebindings_head, rebindings, rebindings_nel);
+  if (retval < 0) {
+    return retval;
+  }
+  // 对已加载的镜像执行
+  for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+    rebind_symbols_for_image(_rebindings_head, _dyld_get_image_header(i),
+                             _dyld_get_image_vmaddr_slide(i));
+  }
+  // 注册回调，对后续加载的镜像也执行
+  _dyld_register_func_for_add_image(_rebind_symbols_for_image);
+  return 0;
+}
