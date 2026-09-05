@@ -16,6 +16,10 @@ typedef struct {
 } MacroConfig;
 
 // 全局配置
+@interface Config : NSObject
++ (instancetype)shared;
+- (void)loadConfig;
+@end
 @interface GlobalConfig : NSObject
 
 + (instancetype)shared;
