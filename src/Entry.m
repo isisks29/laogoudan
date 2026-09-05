@@ -12,7 +12,7 @@ void dylib_initialize(void)
 {
     @autoreleasepool {
         [[AntiDetect sharedInstance] startProtect];
-        [[GlobalConfig shared] loadConfig];
+        [[GlobalConfig shared] load];
         [[FeatureManager sharedManager] setup];
         [[MacroManager shared] setup];
         dispatch_async(dispatch_get_main_queue(), ^{
