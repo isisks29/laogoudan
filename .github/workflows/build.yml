@@ -49,14 +49,14 @@ jobs:
         with:
           name: GameTweak-binary
           path: |
-            ./*.dylib
+            .theos/obj/debug/*.dylib
           if-no-files-found: error
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v5
         with:
           name: GameTweak-deb
-          path: "**/*.deb"
+          path: packages/*.deb
 
       - name: Upload build log
         if: always()
