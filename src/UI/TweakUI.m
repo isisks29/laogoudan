@@ -1,9 +1,5 @@
 #import <UIKit/UIKit.h>
 #import "TweakUI.h"
-@interface TweakUI : NSObject
-+ (void)showFloatingWindow;
-- (void)showUI;
-@end
 #import "../Config.h"
 #import "../AntiDetect.h"
 #import "../MemoryUtils.h"
