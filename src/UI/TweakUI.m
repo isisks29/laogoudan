@@ -529,7 +529,7 @@
             MacroConfig c;
             if(v) [v getValue:&c];
             c.enabled = on;
-            NSValue *v = [NSValue valueWithBytes:&c objCType:@encode(MacroConfig)];
+            NSValue *vOut = [NSValue valueWithBytes:&c objCType:@encode(MacroConfig)];
             [[GlobalConfig shared] setValue:v forKey:configKey];
             [[GlobalConfig shared] save];
             [[MacroManager shared] updateButtonPositions];
