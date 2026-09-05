@@ -1,72 +1,37 @@
-name: Build GameTweak
+name: Build GameTweak‑Clang
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
 
-env:
-  THEOS: ${{ github.workspace }}/theos
-
 jobs:
   build:
-    runs-on: macos-14
-
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - name: Install dependencies
-        run: brew install ldid xz dpkg
-
-      - name: Clone Theos
-        run: git clone --recursive --depth 1 https://github.com/theos/theos.git $THEOS
-
-      - name: Download SDKs
+      - name: Compile iOS dylib
         run: |
-          set -e
-          curl -L -o /tmp/sdks.tar.gz https://github.com/theos/sdks/archive/master.tar.gz
-          tar -xzf /tmp/sdks.tar.gz -C /tmp
-          mkdir -p $THEOS/sdks
-          for sdk in /tmp/sdks-master/iPhoneOS*.sdk; do
-            [ -d "$sdk" ] && ditto "$sdk" "$THEOS/sdks/$(basename $sdk)"
-          done
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          OUTPUT_DYLIB=GameTweak.dylib
 
-      - name: Build & Package
-        run: |
-          set -o pipefail
-          export THEOS=$THEOS
-          make clean
-          make package FINALPACKAGE=1 2>&1 | tee build_log.txt
-          # 打印目录用于排错
-          echo "==== .theos/obj 目录 ===="
-          ls -la .theos/obj/
-          echo "==== packages目录 ===="
-          ls -la packages/
+          xcrun clang \
+            -target arm64-apple-ios15.0 \
+            -isysroot "$SDK_PATH" \
+            -dynamiclib \
+            -fobjc-arc \
+            -fvisibility=hidden \
+            -framework UIKit \
+            -framework Foundation \
+            -framework CoreGraphics \
+            -o "$OUTPUT_DYLIB" \
+            src/*.m \
+            src/UI/*.m \
+            src/fishhook/*.c
 
-      - name: Extract dylib from deb（兜底方案）
-        run: |
-          mkdir -p output_dylib
-          # 从deb包提取dylib，不依赖obj目录
-          dpkg -x packages/*.deb ./output_dylib
-
-      - name: Upload dylib artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
           name: GameTweak-binary
-          path: |
-            .theos/obj/release/*.dylib
-            .theos/obj/debug/*.dylib
-            output_dylib/Library/MobileSubstrate/DynamicLibraries/*.dylib
-          if-no-files-found: error
-
-      - name: Upload deb artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: GameTweak-deb
-          path: packages/*.deb
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: build-log
-          path: build_log.txt
+          path: GameTweak.dylib
