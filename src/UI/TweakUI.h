@@ -7,7 +7,7 @@
 @interface TweakUI : NSObject
 
 + (instancetype)shared;
-
++ (void)showFloatingWindow;
 // 显示悬浮按钮
 - (void)show;
 
