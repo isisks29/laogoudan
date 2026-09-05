@@ -65,10 +65,7 @@ static void detect_own_path(void) {
             break;
         }
     }
-    if (!g_own_path && count > 0) {
-        const char *last = _dyld_get_image_name(count - 1);
-        if (last) g_own_path = strdup(last);
-    }
+    
     // 找一个系统库路径作为假路径
     for (uint32_t i = 0; i < count; i++) {
         const char *name = _dyld_get_image_name(i);
