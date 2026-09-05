@@ -1,9 +1,12 @@
 #import <UIKit/UIKit.h>
-#import "TweakUI.h"   // ✅必须导入自己！漏掉这一行就是全套爆炸
+#import "TweakUI.h"
 #import "../Config.h"
 #import "../AntiDetect.h"
 #import "../MemoryUtils.h"
 #import "../IL2CPPUtils.h"
+//====新增下面两行====
+#import "../MacroManager.h"
+#import "../FeatureManager.h"
 // 颜色常量
 #define COLOR_BG [UIColor colorWithWhite:0.12 alpha:0.95]
 #define COLOR_CELL [UIColor colorWithWhite:0.18 alpha:1.0]
