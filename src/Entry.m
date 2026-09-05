@@ -1,6 +1,6 @@
 #include <dlfcn.h>
 #import <Foundation/Foundation.h>
-#import "GlobalConfig.h"
+#import "Config.h"
 #import "AntiDetect.h"
 #import "FeatureManager.h"
 #import "MacroManager.h"
