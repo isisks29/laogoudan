@@ -33,7 +33,7 @@
         if (depth == 0) {
             // 只处理可写的、非系统的内存区域
             if ((info.protection & VM_PROT_WRITE) && 
-                !(info.protection & VM_PROT_ALLOCATEMASK)) {
+                !(info.protection)) {
                 BOOL stop = NO;
                 block(address, size, &stop);
                 if (stop) break;
@@ -49,7 +49,7 @@
     memcpy(&targetBits, &target, sizeof(float));
     
     [self enumerateRegions:^(uintptr_t start, size_t size, BOOL *stop) {
-        vm_offset_t data = NULL;
+        vm_offset_t data = 0;
         mach_msg_type_number_t dataSize = 0;
         kern_return_t kr = vm_read([self taskPort], start, (vm_size_t)size, &data, &dataSize);
         if (kr != KERN_SUCCESS) return;
@@ -71,7 +71,7 @@
     NSMutableArray *results = [NSMutableArray array];
     
     [self enumerateRegions:^(uintptr_t start, size_t size, BOOL *stop) {
-        vm_offset_t data = NULL;
+        vm_offset_t data = 0;
         mach_msg_type_number_t dataSize = 0;
         kern_return_t kr = vm_read([self taskPort], start, (vm_size_t)size, &data, &dataSize);
         if (kr != KERN_SUCCESS) return;
@@ -99,7 +99,7 @@
     
     // 搜索 int，然后看附近有没有 float 结果
     [self enumerateRegions:^(uintptr_t start, size_t size, BOOL *stop) {
-        vm_offset_t data = NULL;
+        vm_offset_t data = 0;
         mach_msg_type_number_t dataSize = 0;
         kern_return_t kr = vm_read([self taskPort], start, (vm_size_t)size, &data, &dataSize);
         if (kr != KERN_SUCCESS) return;
@@ -133,7 +133,7 @@
     uintptr_t start = base - radius;
     size_t size = radius * 2;
     
-    vm_offset_t data = NULL;
+    vm_offset_t data = 0;
     mach_msg_type_number_t dataSize = 0;
     kern_return_t kr = vm_read([self taskPort], start, (vm_size_t)size, &data, &dataSize);
     if (kr != KERN_SUCCESS) return @[];
@@ -166,7 +166,7 @@
 
 + (float)readFloatAt:(uintptr_t)addr {
     float value = 0;
-    vm_offset_t data = NULL;
+    vm_offset_t data = 0;
     mach_msg_type_number_t dataSize = 0;
     kern_return_t kr = vm_read([self taskPort], addr, sizeof(float), &data, &dataSize);
     if (kr == KERN_SUCCESS) {
@@ -178,7 +178,7 @@
 
 + (int32_t)readIntAt:(uintptr_t)addr {
     int32_t value = 0;
-    vm_offset_t data = NULL;
+    vm_offset_t data = 0;
     mach_msg_type_number_t dataSize = 0;
     kern_return_t kr = vm_read([self taskPort], addr, sizeof(int32_t), &data, &dataSize);
     if (kr == KERN_SUCCESS) {
