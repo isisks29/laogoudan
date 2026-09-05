@@ -32,8 +32,7 @@
         
         if (depth == 0) {
             // 只处理可写的、非系统的内存区域
-            if ((info.protection & VM_PROT_WRITE) && 
-                !(info.protection)) {
+            if (info.protection & VM_PROT_WRITE) {
                 BOOL stop = NO;
                 block(address, size, &stop);
                 if (stop) break;
