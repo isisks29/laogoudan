@@ -221,23 +221,76 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 }
 + (NSString *)debugInfo {
     NSMutableString *info = [NSMutableString string];
-    Il2CppObject *core = [self getGameCore];
-    [info appendString:core ? @"GameCore: ✓ 已获取\n" : @"GameCore: ✗ 未获取\n"];
-    if (core) {
-        const MethodInfo *m0 = [self getMethod:@"get_Instance" className:@"GameCoreCenter" argsCount:0];
-        const MethodInfo *m1 = [self getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:0];
-        const MethodInfo *m2 = [self getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
-        const MethodInfo *m3 = [self getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
-        const MethodInfo *m4 = [self getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:0];
-        [info appendFormat:@"get_Instance(0参): %@\n", m0 ? @"✓" : @"✗"];
-        [info appendFormat:@"FreeTypePress(0参): %@\n", m1 ? @"✓" : @"✗"];
-        [info appendFormat:@"FreeTypePress(1参): %@\n", m2 ? @"✓" : @"✗"];
-        [info appendFormat:@"set_BtnIsFeeding(1参): %@\n", m3 ? @"✓" : @"✗"];
-        [info appendFormat:@"FreeTypeClick(0参): %@\n", m4 ? @"✓" : @"✗"];
+
+    // 1. IL2CPP 函数指针状态
+    [info appendString:@"=== IL2CPP 函数指针 ===\n"];
+    [info appendFormat:@"domain_get: %@\n", il2cpp_domain_get ? @"✓" : @"✗"];
+    [info appendFormat:@"class_from_name: %@\n", il2cpp_class_from_name ? @"✓" : @"✗"];
+    [info appendFormat:@"class_get_method: %@\n", il2cpp_class_get_method_from_name ? @"✓" : @"✗"];
+    [info appendFormat:@"runtime_invoke: %@\n", il2cpp_runtime_invoke ? @"✓" : @"✗"];
+    [info appendFormat:@"field_static_get_value: %@\n", il2cpp_field_static_get_value ? @"✓" : @"✗"];
+
+    // 2. 列出所有程序集
+    if (il2cpp_domain_get && il2cpp_domain_get_assemblies && il2cpp_assembly_get_image && il2cpp_image_get_name) {
+        void *domain = il2cpp_domain_get();
+        size_t size = 0;
+        void **assemblies = il2cpp_domain_get_assemblies(domain, &size);
+        [info appendFormat:@"\n=== 程序集列表(共%zu个) ===\n", size];
+        for (size_t i = 0; i < size && i < 25; i++) {
+            void *image = il2cpp_assembly_get_image(assemblies[i]);
+            if (image) {
+                const char *name = il2cpp_image_get_name(image);
+                if (name) [info appendFormat:@"%s\n", name];
+            }
+        }
     }
+
+    // 3. 尝试找类
+    [info appendString:@"\n=== 类查找 ===\n"];
+    Il2CppClass *klass = [self findClass:@"GameCoreCenter"];
+    [info appendFormat:@"GameCoreCenter: %@\n", klass ? @"✓" : @"✗"];
+    Il2CppClass *klass2 = [self findClass:@"GameCore"];
+    [info appendFormat:@"GameCore: %@\n", klass2 ? @"✓" : @"✗"];
+
+    // 4. 如果找到 GameCoreCenter，列出所有可能的单例字段和方法
+    if (klass) {
+        [info appendString:@"\n=== 静态字段 ===\n"];
+        NSArray *fields = @[@"Instance", @"instance", @"Singleton", @"singleton",
+                             @"Current", @"current", @"Main", @"main",
+                             @"_instance", @"_Instance", @"_singleton", @"shared", @"Shared"];
+        for (NSString *f in fields) {
+            void *field = il2cpp_class_get_field_from_name(klass, f.UTF8String);
+            if (field) {
+                [info appendFormat:@"%@: ✓", f];
+                if (il2cpp_field_static_get_value) {
+                    static uint8_t buf[256];
+                    il2cpp_field_static_get_value(field, buf);
+                    Il2CppObject *obj = *(Il2CppObject **)buf;
+                    [info appendFormat:@" (值%@)", obj ? @"非空" : @"为空"];
+                }
+                [info appendString:@"\n"];
+            }
+        }
+        [info appendString:@"\n=== Getter方法 ===\n"];
+        NSArray *getters = @[@"get_Instance", @"get_instance", @"getSingleton", @"get_Singleton",
+                              @"getCurrent", @"get_Current", @"getMain", @"get_Main",
+                              @"get_shared", @"get_Shared", @"Instance", @"instance"];
+        for (NSString *g in getters) {
+            const MethodInfo *m = il2cpp_class_get_method_from_name(klass, g.UTF8String, 0);
+            if (m) [info appendFormat:@"%@: ✓\n", g];
+        }
+        [info appendString:@"\n=== 业务方法 ===\n"];
+        NSArray *methods = @[@"FreeTypePress", @"FreeTypeClick", @"set_BtnIsFeeding",
+                              @"get_BtnIsFeeding", @"set_FeedBtnUp", @"set_skillFeedPress"];
+        for (NSString *mname in methods) {
+            const MethodInfo *m0 = il2cpp_class_get_method_from_name(klass, mname.UTF8String, 0);
+            const MethodInfo *m1 = il2cpp_class_get_method_from_name(klass, mname.UTF8String, 1);
+            if (m0 || m1) [info appendFormat:@"%@(0参%@ 1参%@)\n", mname, m0?@"✓":@"✗", m1?@"✓":@"✗"];
+        }
+    }
+
     return info;
 }
-
 + (Il2CppObject *)getSkillManager {
     // 示例：从 GameCore 获取技能/按键管理器
     // 这是宏操作的核心对象，调用它的 set_skillFeedPress 等方法
