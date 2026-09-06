@@ -59,11 +59,12 @@
 
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.15 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        // 不要用weakSelf.xxx，直接访问ivar
-        if (!weakSelf->_isDragging && !weakSelf->_pressStarted) {
-            weakSelf->_pressStarted = YES;
-            weakSelf.isPressed = YES;
-            if (weakSelf.onPress) weakSelf.onPress(YES);
+        MacroButton *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (!strongSelf->_isDragging && !strongSelf->_pressStarted) {
+            strongSelf->_pressStarted = YES;
+            strongSelf.isPressed = YES;
+            if (strongSelf.onPress) strongSelf.onPress(YES);
         }
     });
 }
