@@ -221,11 +221,17 @@
     // 吐球：set_BtnIsFeeding 是带bool的setter
     [IL2CPPUtils callBoolMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" instance:gameCore value:pressed];
 }
+- (void)setSplitPress:(BOOL)pressed {
+    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
+    if (!gameCore) return;
+    // FreeTypePress 带1个bool参数（调试确认：1参✓ 0参✗）
+    [IL2CPPUtils callBoolMethod:@"FreeTypePress" className:@"GameCoreCenter" instance:gameCore value:pressed];
+}
 
 #pragma mark - 16分宏
 - (void)handleShiliufen:(BOOL)pressed {
     if (pressed) { [self startShiliufenLoop]; }
-    else { [self stopShiliufenLoop]; }
+    else { [self stopShiliufenLoop]; [self setSplitPress:NO]; }
 }
 - (void)startShiliufenLoop {
     [self stopShiliufenLoop];
@@ -240,15 +246,16 @@
     [self shiliufenTick];
 }
 - (void)shiliufenTick {
-    // FreeTypePress 是无参方法，每次调用触发一次分身（不是setter！）
-    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (gameCore) {
-        [IL2CPPUtils callVoidMethod:@"FreeTypePress" className:@"GameCoreCenter" instance:gameCore];
-    }
+    [self setSplitPress:YES];
+    GlobalConfig *cfg = [GlobalConfig shared];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, cfg.shiliufen.pressDuration * NSEC_PER_MSEC),
+                   dispatch_get_main_queue(), ^{ [self setSplitPress:NO]; });
 }
+
 - (void)stopShiliufenLoop {
     [self.shiliufenTimer invalidate];
     self.shiliufenTimer = nil;
+    [self setSplitPress:NO];
 }
 
 #pragma mark - 吐球宏
@@ -279,11 +286,15 @@
 #pragma mark - 4分宏
 - (void)handleSifen:(BOOL)pressed {
     if (!pressed) return;
-    // FreeTypeClick 是无参方法，调用一次触发一次4分
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (gameCore) {
-        [IL2CPPUtils callVoidMethod:@"FreeTypeClick" className:@"GameCoreCenter" instance:gameCore];
-    }
+    if (!gameCore) return;
+    // FreeTypeClick 带1个bool参数（调试确认：1参✓ 0参✗）
+    [IL2CPPUtils callBoolMethod:@"FreeTypeClick" className:@"GameCoreCenter" instance:gameCore value:YES];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC),
+                   dispatch_get_main_queue(), ^{
+        Il2CppObject *gc = [IL2CPPUtils getGameCore];
+        if (gc) [IL2CPPUtils callBoolMethod:@"FreeTypeClick" className:@"GameCoreCenter" instance:gc value:NO];
+    });
 }
 
 #pragma mark - 手动触发
