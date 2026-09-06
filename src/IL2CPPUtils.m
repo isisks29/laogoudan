@@ -135,8 +135,7 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     if (!il2cpp_runtime_invoke) [self initialize];
     if (!method) return NULL;
     void *exc = NULL;
-    // 无参方法传 NULL，有参方法传 args
-    return il2cpp_runtime_invoke(method, instance, args ? args : NULL, &exc);
+    return il2cpp_runtime_invoke(method, (__bridge void *)instance ?: NULL, args ? args : NULL, &exc);
 }
 
 + (void)callMethod:(const MethodInfo *)method instance:(Il2CppObject *)instance args:(void **)args returnBuf:(void *)retBuf {
@@ -263,7 +262,24 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
             }
         }
     }
+        // 方式3：直接读取静态字段数据区域，扫描非空对象指针
+    if (il2cpp_class_get_static_field_data) {
+        void *staticData = il2cpp_class_get_static_field_data(klass);
+        if (staticData) {
+            void **ptr = (void **)staticData;
+            for (int i = 0; i < 24; i++) {
+                void *obj = ptr[i];
+                // 有效指针对齐检测：非空、4字节对齐、不是0xFFFFFFFF
+                if (obj && ((uintptr_t)obj & 0x7) == 0 && (uintptr_t)obj > 0x10000) {
+                    cached = obj;
+                    return cached;
+                }
+            }
+        }
+    }
 
+    return cached;
+}
     return cached;
 }
 + (NSString *)debugInfo {
