@@ -32,7 +32,7 @@ static FeatureManager *_inst = nil;
     return _inst;
 }
 - (void)setup {
-    //留空，后续写逻辑
+    _inGame = YES;
 }
 
 + (instancetype)shared {
@@ -121,7 +121,7 @@ static FeatureManager *_inst = nil;
 
 - (void)applyFeatures {
     GlobalConfig *cfg = [GlobalConfig shared];
-    if (!self.inGame) return;
+    
     
     // ===== A 类：内存搜改型 =====
     
