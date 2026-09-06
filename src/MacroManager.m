@@ -38,39 +38,44 @@
     }
     return self;
 }
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     self.layer.cornerRadius = self.bounds.size.width / 2;
     self.titleLabel.frame = self.bounds;
 }
+
 - (void)setIsPressed:(BOOL)isPressed {
     _isPressed = isPressed;
     self.alpha = isPressed ? 0.6 : 1.0;
     self.transform = isPressed ? CGAffineTransformMakeScale(0.9, 0.9) : CGAffineTransformIdentity;
 }
+
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
     self.startPoint = [touch locationInView:self];
     _isDragging = NO;
     _pressStarted = NO;
-    // 延迟150ms触发宏，如果期间移动了就取消（进入拖动模式）
+
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.15 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        if (!weakSelf.isDragging && !weakSelf.pressStarted) {
-            weakSelf.pressStarted = YES;
+        // 不要用weakSelf.xxx，直接访问ivar
+        if (!weakSelf->_isDragging && !weakSelf->_pressStarted) {
+            weakSelf->_pressStarted = YES;
             weakSelf.isPressed = YES;
             if (weakSelf.onPress) weakSelf.onPress(YES);
         }
     });
 }
+
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
     CGPoint pt = [touch locationInView:self];
     CGFloat dx = pt.x - self.startPoint.x;
     CGFloat dy = pt.y - self.startPoint.y;
+
     if (fabs(dx) > 5 || fabs(dy) > 5) {
         _isDragging = YES;
-        // 如果宏已经启动，立即停止
         if (_pressStarted) {
             _pressStarted = NO;
             self.isPressed = NO;
@@ -83,6 +88,7 @@
         self.startPoint = pt;
     }
 }
+
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     if (_pressStarted) {
         self.isPressed = NO;
@@ -91,6 +97,7 @@
     _pressStarted = NO;
     _isDragging = NO;
 }
+
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     if (_pressStarted) {
         self.isPressed = NO;
@@ -99,6 +106,7 @@
     _pressStarted = NO;
     _isDragging = NO;
 }
+
 @end
 
 @interface MacroManager ()
