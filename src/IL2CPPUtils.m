@@ -93,13 +93,14 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 
 + (Il2CppClass *)getClass:(NSString *)className namespace:(NSString *)ns {
     if (!il2cpp_class_from_name) [self initialize];
-    // 优先遍历所有程序集找（解决程序集名不对的问题）
-    Il2CppClass *klass = [self findClass:className];
-    if (klass) return klass;
-    // fallback
+    // 优先从 Assembly-CSharp 找（之前生效的方式，避免遍历到错误的同名类）
     Il2CppImage *image = [self getImage:@"Assembly-CSharp"];
-    if (!image) return NULL;
-    return il2cpp_class_from_name(image, ns.UTF8String ?: "", className.UTF8String);
+    if (image) {
+        Il2CppClass *klass = il2cpp_class_from_name(image, ns.UTF8String ?: "", className.UTF8String);
+        if (klass) return klass;
+    }
+    // fallback：遍历所有程序集
+    return [self findClass:className];
 }
 
 + (Il2CppClass *)getClass:(NSString *)className {
@@ -209,15 +210,12 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 + (Il2CppObject *)getGameCore {
     static Il2CppObject *cached = NULL;
     if (cached) return cached;
-    // 游戏单例getter可能叫不同名字，逐个尝试
-    NSArray *getters = @[@"get_Instance", @"get_instance", @"getSingleton", @"get_Singleton", @"getCurrent", @"get_Current", @"get_Main"];
-    for (NSString *getter in getters) {
-        const MethodInfo *method = [self getMethod:getter className:@"GameCoreCenter" argsCount:0];
-        if (method) {
-            void *args[1] = { NULL };  // 不传NULL，传空数组，避免il2cpp崩溃
-            Il2CppObject *result = [self callStaticMethod:method args:args];
-            if (result) { cached = result; return cached; }
-        }
+    // 只尝试 get_Instance（之前16分点成吐球键时就是这个方式生效的）
+    const MethodInfo *method = [self getMethod:@"get_Instance" className:@"GameCoreCenter" argsCount:0];
+    if (method) {
+        void *args[1] = { NULL };
+        Il2CppObject *result = [self callStaticMethod:method args:args];
+        if (result) { cached = result; return cached; }
     }
     return cached;
 }
