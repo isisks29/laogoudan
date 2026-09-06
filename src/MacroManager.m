@@ -12,6 +12,7 @@
 @implementation MacroButton {
     BOOL _isDragging;
     BOOL _pressStarted;
+    CGPoint _startCenter;   // 新增：记录拖动开始时的中心位置
 }
 - (instancetype)initWithType:(NSInteger)type {
     self = [super init];
@@ -53,7 +54,8 @@
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
-    self.startPoint = [touch locationInView:self];
+    self.startPoint = [touch locationInView:self.superview];  // 改：用superview坐标
+    _startCenter = self.center;                                  // 新增：记录初始中心
     _isDragging = NO;
     _pressStarted = NO;
 
@@ -70,9 +72,9 @@
 }
 
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if (![GlobalConfig shared].debugMode) return;  // 调试模式关闭：固定位置，不可拖动
+    if (![GlobalConfig shared].debugMode) return;
     UITouch *touch = touches.anyObject;
-    CGPoint pt = [touch locationInView:self];
+    CGPoint pt = [touch locationInView:self.superview];  // 改：用superview坐标
     CGFloat dx = pt.x - self.startPoint.x;
     CGFloat dy = pt.y - self.startPoint.y;
 
@@ -83,11 +85,8 @@
             self.isPressed = NO;
             if (self.onPress) self.onPress(NO);
         }
-        CGPoint center = self.center;
-        center.x += dx;
-        center.y += dy;
-        self.center = center;
-        self.startPoint = pt;
+        // 改：用初始中心+总位移，不要每次累加center，不要更新startPoint
+        self.center = CGPointMake(_startCenter.x + dx, _startCenter.y + dy);
     }
 }
 
@@ -275,15 +274,15 @@
 - (void)setFeedPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
-    // 对应 ballspt.dylib: set_skillFeedPress: / set_BtnIsFeeding:
-    [IL2CPPUtils setBoolProperty:@"skillFeedPress" className:@"GameCoreCenter" instance:gameCore value:pressed];
-    [IL2CPPUtils setBoolProperty:@"BtnIsFeeding" className:@"GameCoreCenter" instance:gameCore value:pressed];
+    // ⚠️ IL2CPP方法名不带冒号！必须用 callBoolMethod，不能用 setBoolProperty
+    [IL2CPPUtils callBoolMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" instance:gameCore value:pressed];
+    [IL2CPPUtils callBoolMethod:@"set_skillFeedPress" className:@"GameCoreCenter" instance:gameCore value:pressed];
 }
 
 - (void)setSplitPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
-    // 对应 ballspt.dylib: FreeTypePress: （非 setter，直接调用）
+    // FreeTypePress = 分身键按下（16分/4分都用这个）
     [IL2CPPUtils callBoolMethod:@"FreeTypePress" className:@"GameCoreCenter" instance:gameCore value:pressed];
 }
 
