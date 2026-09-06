@@ -96,11 +96,13 @@
         self.isPressed = NO;
         if (self.onPress) self.onPress(NO);
     }
-    if (_isDragging && self.onDragEnd) {
-        self.onDragEnd(self.center);
-    }
+    BOOL wasDragging = _isDragging;
     _pressStarted = NO;
     _isDragging = NO;
+    // 拖动结束：通知外部保存新位置
+    if (wasDragging && self.onDragEnd) {
+        self.onDragEnd(self.center);
+    }
 }
 
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -121,8 +123,6 @@
 @property (weak) UIWindow *gameWindow;
 @property (strong) NSTimer *shiliufenTimer;
 @property (strong) NSTimer *tuqiuTimer;
-@property (assign) NSInteger sifenClickCount;
-@property (strong) NSTimer *sifenResetTimer;
 @end
 
 @implementation MacroManager
@@ -136,7 +136,7 @@
 
 - (instancetype)init {
     self = [super init];
-    if (self) { _sifenClickCount = 0; }
+    if (self) {  }
     return self;
 }
 
@@ -153,14 +153,17 @@
     self.shiliufenBtn.onPress = ^(BOOL pressed) { [weakSelf handleShiliufen:pressed]; };
     self.shiliufenBtn.onDragEnd = ^(CGPoint center) { [weakSelf saveButtonPosition:0 center:center]; };
 
+    self.tuqiuBtn = [[MacroButton alloc] initWithType:1];
+    [window addSubview:self.tuqiuBtn];
     self.tuqiuBtn.onPress = ^(BOOL pressed) { [weakSelf handleTuqiu:pressed]; };
     self.tuqiuBtn.onDragEnd = ^(CGPoint center) { [weakSelf saveButtonPosition:1 center:center]; };
 
+    self.sifenBtn = [[MacroButton alloc] initWithType:2];
+    [window addSubview:self.sifenBtn];
     self.sifenBtn.onPress = ^(BOOL pressed) { [weakSelf handleSifen:pressed]; };
     self.sifenBtn.onDragEnd = ^(CGPoint center) { [weakSelf saveButtonPosition:2 center:center]; };
 
     [self updateButtonPositions];
-    [self setMacroButtonsHidden:!cfg.menuVisible];
 }
 
 - (void)updateButtonPositions {
@@ -189,6 +192,19 @@
         s4size, s4size);
     self.sifenBtn.hidden = !cfg.sifen.enabled;
 }
+- (void)saveButtonPosition:(NSInteger)type center:(CGPoint)center {
+    GlobalConfig *cfg = [GlobalConfig shared];
+    CGSize screenSize = [UIScreen mainScreen].bounds.size;
+    CGFloat relX = center.x / screenSize.width;
+    CGFloat relY = center.y / screenSize.height;
+
+    NSString *key = nil;
+    MacroConfig mc;
+    if (type == 0) { mc = cfg.shiliufen; mc.buttonX = relX; mc.buttonY = relY; cfg.shiliufen = mc; }
+    else if (type == 1) { mc = cfg.tuqiu; mc.buttonX = relX; mc.buttonY = relY; cfg.tuqiu = mc; }
+    else if (type == 2) { mc = cfg.sifen; mc.buttonX = relX; mc.buttonY = relY; cfg.sifen = mc; }
+    [cfg save];
+}
 
 - (void)setMacroButtonsHidden:(BOOL)hidden {
     if (!self.shiliufenBtn) return;
@@ -203,78 +219,73 @@
     if (pressed) { [self startShiliufenLoop]; }
     else { [self stopShiliufenLoop]; [self setSplitPress:NO]; }
 }
-
 - (void)startShiliufenLoop {
+    [self stopShiliufenLoop];
     GlobalConfig *cfg = [GlobalConfig shared];
     NSTimeInterval interval = (cfg.shiliufen.pressDuration + cfg.shiliufen.interval) / 1000.0;
-    self.shiliufenTimer = [NSTimer scheduledTimerWithTimeInterval:interval
-                                                             target:self
-                                                           selector:@selector(shiliufenTick)
-                                                           userInfo:nil
-                                                            repeats:YES];
+    self.shiliufenTimer = [NSTimer timerWithTimeInterval:interval
+                                                    target:self
+                                                  selector:@selector(shiliufenTick)
+                                                  userInfo:nil
+                                                   repeats:YES];
     [[NSRunLoop mainRunLoop] addTimer:self.shiliufenTimer forMode:NSRunLoopCommonModes];
     [self shiliufenTick];
 }
 - (void)shiliufenTick {
-    GlobalConfig *cfg = [GlobalConfig shared];
     [self setSplitPress:YES];
+    GlobalConfig *cfg = [GlobalConfig shared];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, cfg.shiliufen.pressDuration * NSEC_PER_MSEC),
                    dispatch_get_main_queue(), ^{ [self setSplitPress:NO]; });
 }
 - (void)stopShiliufenLoop {
     [self.shiliufenTimer invalidate];
     self.shiliufenTimer = nil;
-    [self setSplitPress:NO];  // 确保分身键抬起
+    [self setSplitPress:NO];
 }
-
 #pragma mark - 吐球宏
 - (void)handleTuqiu:(BOOL)pressed {
     if (pressed) { [self startTuqiuLoop]; }
     else { [self stopTuqiuLoop]; [self setFeedPress:NO]; }
 }
 - (void)startTuqiuLoop {
+    [self stopTuqiuLoop];
     GlobalConfig *cfg = [GlobalConfig shared];
     NSTimeInterval interval = (cfg.tuqiu.pressDuration + cfg.tuqiu.interval) / 1000.0;
-    self.tuqiuTimer = [NSTimer scheduledTimerWithTimeInterval:interval
-                                                         target:self
-                                                       selector:@selector(tuqiuTick)
-                                                       userInfo:nil
-                                                        repeats:YES];
+    self.tuqiuTimer = [NSTimer timerWithTimeInterval:interval
+                                                target:self
+                                              selector:@selector(tuqiuTick)
+                                              userInfo:nil
+                                               repeats:YES];
     [[NSRunLoop mainRunLoop] addTimer:self.tuqiuTimer forMode:NSRunLoopCommonModes];
     [self tuqiuTick];
 }
 - (void)tuqiuTick {
-    GlobalConfig *cfg = [GlobalConfig shared];
     [self setFeedPress:YES];
+    GlobalConfig *cfg = [GlobalConfig shared];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, cfg.tuqiu.pressDuration * NSEC_PER_MSEC),
                    dispatch_get_main_queue(), ^{ [self setFeedPress:NO]; });
 }
 - (void)stopTuqiuLoop {
     [self.tuqiuTimer invalidate];
     self.tuqiuTimer = nil;
-    [self setFeedPress:NO];  // 确保吐球键抬起
+    [self setFeedPress:NO];
 }
 
 #pragma mark - 4分宏
 - (void)handleSifen:(BOOL)pressed {
     if (!pressed) return;
-    self.sifenClickCount++;
-    [self triggerSplit];
-    [self.sifenResetTimer invalidate];
-    GlobalConfig *cfg = [GlobalConfig shared];
-    self.sifenResetTimer = [NSTimer scheduledTimerWithTimeInterval:cfg.sifen.interval / 1000.0
-                                                               target:self
-                                                             selector:@selector(resetSifen)
-                                                             userInfo:nil
-                                                              repeats:NO];
+    [self triggerFreeTypeClick];
 }
-- (void)triggerSplit {
-    [self setSplitPress:YES];
-    GlobalConfig *cfg = [GlobalConfig shared];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, cfg.sifen.pressDuration * NSEC_PER_MSEC),
-                   dispatch_get_main_queue(), ^{ [self setSplitPress:NO]; });
+- (void)triggerFreeTypeClick {
+    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
+    if (!gameCore) return;
+    // 4分是单次点击，用 FreeTypeClick（无参方法），不是 FreeTypePress
+    const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:0];
+    if (method) {
+        void *args[1] = { NULL };
+        [IL2CPPUtils callMethod:method instance:gameCore args:args];
+    }
 }
-- (void)resetSifen { self.sifenClickCount = 0; }
 
 #pragma mark - 核心：IL2CPP 调用（方法名对齐 ballspt.dylib）
 - (void)setFeedPress:(BOOL)pressed {
