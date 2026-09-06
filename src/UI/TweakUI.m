@@ -191,7 +191,7 @@
         _titleLabel.textColor = COLOR_TEXT;
         _titleLabel.font = [UIFont boldSystemFontOfSize:15];
         [self addSubview:_titleLabel];
-        _sizeSlider = [[SliderRow alloc] initWithTitle:@"按钮大小" min:20 max:80];
+        _sizeSlider = [[SliderRow alloc] initWithTitle:@"按钮大小" min:40 max:160];
         [self addSubview:_sizeSlider];
         _pressSlider = [[SliderRow alloc] initWithTitle:@"单次时长(ms)" min:10 max:200];
         [self addSubview:_pressSlider];
