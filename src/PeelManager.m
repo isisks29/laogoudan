@@ -62,6 +62,15 @@
     if (([lower containsString:@"keyword"] || [lower containsString:@"spore"]) &&
         ([lower containsString:@".plist"] || [lower containsString:@".json"] ||
          [lower containsString:@".dat"] || [lower containsString:@".bytes"])) return YES;
+        // 游戏资源服务器（superpop = 巨人网络，球球大作战开发商）
+    if ([lower containsString:@"superpop"] && ([lower containsString:@"skin"] ||
+        [lower containsString:@"keyword"] || [lower containsString:@"spore"] ||
+        [lower containsString:@"ballmaterial"] || [lower containsString:@"avatar"])) return YES;
+    // 关键词/孢子配置（更宽泛）
+    if ([lower containsString:@"keyskin"]) return YES;
+    if ([lower containsString:@"spore"] && ([lower containsString:@".json"] ||
+        [lower containsString:@".plist"] || [lower containsString:@".bytes"] ||
+        [lower containsString:@".txt"] || [lower containsString:@".dat"])) return YES;
     return NO;
 }
 
