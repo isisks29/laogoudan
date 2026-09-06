@@ -69,6 +69,7 @@
 }
 
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    if (![GlobalConfig shared].debugMode) return;  // 调试模式关闭：固定位置，不可拖动
     UITouch *touch = touches.anyObject;
     CGPoint pt = [touch locationInView:self];
     CGFloat dx = pt.x - self.startPoint.x;
