@@ -93,13 +93,7 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 
 + (Il2CppClass *)getClass:(NSString *)className namespace:(NSString *)ns {
     if (!il2cpp_class_from_name) [self initialize];
-    // 优先从 Assembly-CSharp 找（之前生效的方式，避免遍历到错误的同名类）
-    Il2CppImage *image = [self getImage:@"Assembly-CSharp"];
-    if (image) {
-        Il2CppClass *klass = il2cpp_class_from_name(image, ns.UTF8String ?: "", className.UTF8String);
-        if (klass) return klass;
-    }
-    // fallback：遍历所有程序集
+    // 游戏没有 Assembly-CSharp.dll，直接遍历所有74个程序集找
     return [self findClass:className];
 }
 
@@ -210,12 +204,15 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 + (Il2CppObject *)getGameCore {
     static Il2CppObject *cached = NULL;
     if (cached) return cached;
-    // 只尝试 get_Instance（之前16分点成吐球键时就是这个方式生效的）
-    const MethodInfo *method = [self getMethod:@"get_Instance" className:@"GameCoreCenter" argsCount:0];
-    if (method) {
-        void *args[1] = { NULL };
-        Il2CppObject *result = [self callStaticMethod:method args:args];
-        if (result) { cached = result; return cached; }
+    // 调试确认：get_instance(小写)存在，get_Instance(大写)不存在
+    NSArray *getters = @[@"get_instance", @"get_Instance"];
+    for (NSString *getter in getters) {
+        const MethodInfo *method = [self getMethod:getter className:@"GameCoreCenter" argsCount:0];
+        if (method) {
+            void *args[1] = { NULL };
+            Il2CppObject *result = [self callStaticMethod:method args:args];
+            if (result) { cached = result; return cached; }
+        }
     }
     return cached;
 }
