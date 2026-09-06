@@ -162,7 +162,12 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     [self callMethod:method instance:instance args:args];
     return YES;
 }
-
++ (void)callVoidMethod:(NSString *)methodName className:(NSString *)className instance:(Il2CppObject *)instance {
+    const MethodInfo *method = [self getMethod:methodName className:className argsCount:0];
+    if (!method || !instance) return;
+    void *args[1] = { NULL };
+    [self callMethod:method instance:instance args:args];
+}
 + (BOOL)setFloatProperty:(NSString *)propertyName className:(NSString *)className instance:(Il2CppObject *)instance value:(float)val {
     NSString *setterName = [NSString stringWithFormat:@"set_%@", propertyName];
     const MethodInfo *method = [self getMethod:setterName className:className argsCount:1];
