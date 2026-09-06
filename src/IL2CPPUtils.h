@@ -15,6 +15,7 @@ typedef void Il2CppDomain;
 typedef void Il2CppImage;
 
 @interface IL2CPPUtils : NSObject
++ (void)callVoidMethod:(NSString *)methodName className:(NSString *)className instance:(Il2CppObject *)instance;
 
 // 初始化（获取 il2cpp 函数指针）
 + (void)initialize;
