@@ -320,23 +320,7 @@
         }
     }
 }
-- (void)saveButtonPosition:(NSInteger)type center:(CGPoint)center {
-    GlobalConfig *cfg = [GlobalConfig shared];
-    CGSize screenSize = [UIScreen mainScreen].bounds.size;
-    CGFloat nx = center.x / screenSize.width;
-    CGFloat ny = center.y / screenSize.height;
-    if (type == 0) {
-        MacroConfig m = cfg.shiliufen; m.buttonX = nx; m.buttonY = ny;
-        cfg.shiliufen = m;
-    } else if (type == 1) {
-        MacroConfig m = cfg.tuqiu; m.buttonX = nx; m.buttonY = ny;
-        cfg.tuqiu = m;
-    } else {
-        MacroConfig m = cfg.sifen; m.buttonX = nx; m.buttonY = ny;
-        cfg.sifen = m;
-    }
-    [cfg save];
-}
+
 #pragma mark - 手动触发
 - (void)triggerMacro:(NSInteger)type {
     switch (type) {
