@@ -74,18 +74,31 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     }
     return NULL;
 }
+// 遍历所有程序集找类（不依赖Assembly-CSharp名称）
++ (Il2CppClass *)findClass:(NSString *)className {
+    if (!il2cpp_domain_get || !il2cpp_domain_get_assemblies || !il2cpp_assembly_get_image || !il2cpp_class_from_name) [self initialize];
+    void *domain = il2cpp_domain_get();
+    if (!domain) return NULL;
+    size_t size = 0;
+    void **assemblies = il2cpp_domain_get_assemblies(domain, &size);
+    if (!assemblies) return NULL;
+    for (size_t i = 0; i < size; i++) {
+        void *image = il2cpp_assembly_get_image(assemblies[i]);
+        if (!image) continue;
+        void *klass = il2cpp_class_from_name(image, "", className.UTF8String);
+        if (klass) return klass;
+    }
+    return NULL;
+}
 
 + (Il2CppClass *)getClass:(NSString *)className namespace:(NSString *)ns {
     if (!il2cpp_class_from_name) [self initialize];
-    
-    // 尝试从 Assembly-CSharp（游戏主程序集）获取
+    // 优先遍历所有程序集找（解决程序集名不对的问题）
+    Il2CppClass *klass = [self findClass:className];
+    if (klass) return klass;
+    // fallback
     Il2CppImage *image = [self getImage:@"Assembly-CSharp"];
-    if (!image) {
-        // 尝试从所有 image 中找
-        image = [self getImage:className];
-    }
     if (!image) return NULL;
-    
     return il2cpp_class_from_name(image, ns.UTF8String ?: "", className.UTF8String);
 }
 
@@ -189,20 +202,18 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 #pragma mark - 游戏核心对象（需要根据具体游戏修改）
 
 + (Il2CppObject *)getGameCore {
-    // 示例：通过静态属性获取游戏核心单例
-    // 需要根据你的游戏修改类名和属性名
     static Il2CppObject *cached = NULL;
     if (cached) return cached;
-    
-    // 方式1：通过静态字段
-    // cached = [self getStaticFieldAddress:@"Instance" className:@"GameCoreCenter"];
-    
-    // 方式2：通过静态方法 get_Instance
-    const MethodInfo *method = [self getMethod:@"get_Instance" className:@"GameCoreCenter" argsCount:0];
-    if (method) {
-        cached = [self callStaticMethod:method args:NULL];
+    // 游戏单例getter可能叫不同名字，逐个尝试
+    NSArray *getters = @[@"get_Instance", @"get_instance", @"getSingleton", @"get_Singleton", @"getCurrent", @"get_Current", @"get_Main"];
+    for (NSString *getter in getters) {
+        const MethodInfo *method = [self getMethod:getter className:@"GameCoreCenter" argsCount:0];
+        if (method) {
+            void *args[1] = { NULL };  // 不传NULL，传空数组，避免il2cpp崩溃
+            Il2CppObject *result = [self callStaticMethod:method args:args];
+            if (result) { cached = result; return cached; }
+        }
     }
-    
     return cached;
 }
 
