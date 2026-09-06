@@ -2,6 +2,7 @@
 #import "IL2CPPUtils.h"
 
 @interface MacroButton : UIView
+@property (copy) void (^onDragEnd)(CGPoint center);
 @property (assign) NSInteger type;
 @property (strong) UILabel *titleLabel;
 @property (assign, nonatomic) BOOL isPressed;
@@ -95,6 +96,9 @@
         self.isPressed = NO;
         if (self.onPress) self.onPress(NO);
     }
+    if (_isDragging && self.onDragEnd) {
+        self.onDragEnd(self.center);
+    }
     _pressStarted = NO;
     _isDragging = NO;
 }
@@ -147,14 +151,13 @@
     [window addSubview:self.shiliufenBtn];
     __weak typeof(self) weakSelf = self;
     self.shiliufenBtn.onPress = ^(BOOL pressed) { [weakSelf handleShiliufen:pressed]; };
+    self.shiliufenBtn.onDragEnd = ^(CGPoint center) { [weakSelf saveButtonPosition:0 center:center]; };
 
-    self.tuqiuBtn = [[MacroButton alloc] initWithType:1];
-    [window addSubview:self.tuqiuBtn];
     self.tuqiuBtn.onPress = ^(BOOL pressed) { [weakSelf handleTuqiu:pressed]; };
+    self.tuqiuBtn.onDragEnd = ^(CGPoint center) { [weakSelf saveButtonPosition:1 center:center]; };
 
-    self.sifenBtn = [[MacroButton alloc] initWithType:2];
-    [window addSubview:self.sifenBtn];
     self.sifenBtn.onPress = ^(BOOL pressed) { [weakSelf handleSifen:pressed]; };
+    self.sifenBtn.onDragEnd = ^(CGPoint center) { [weakSelf saveButtonPosition:2 center:center]; };
 
     [self updateButtonPositions];
     [self setMacroButtonsHidden:!cfg.menuVisible];
@@ -198,8 +201,9 @@
 #pragma mark - 16分宏
 - (void)handleShiliufen:(BOOL)pressed {
     if (pressed) { [self startShiliufenLoop]; }
-    else { [self stopShiliufenLoop]; [self setFeedPress:NO]; }
+    else { [self stopShiliufenLoop]; [self setSplitPress:NO]; }
 }
+
 - (void)startShiliufenLoop {
     GlobalConfig *cfg = [GlobalConfig shared];
     NSTimeInterval interval = (cfg.shiliufen.pressDuration + cfg.shiliufen.interval) / 1000.0;
@@ -213,13 +217,14 @@
 }
 - (void)shiliufenTick {
     GlobalConfig *cfg = [GlobalConfig shared];
-    [self setFeedPress:YES];
+    [self setSplitPress:YES];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, cfg.shiliufen.pressDuration * NSEC_PER_MSEC),
-                   dispatch_get_main_queue(), ^{ [self setFeedPress:NO]; });
+                   dispatch_get_main_queue(), ^{ [self setSplitPress:NO]; });
 }
 - (void)stopShiliufenLoop {
     [self.shiliufenTimer invalidate];
     self.shiliufenTimer = nil;
+    [self setSplitPress:NO];  // 确保分身键抬起
 }
 
 #pragma mark - 吐球宏
@@ -247,6 +252,7 @@
 - (void)stopTuqiuLoop {
     [self.tuqiuTimer invalidate];
     self.tuqiuTimer = nil;
+    [self setFeedPress:NO];  // 确保吐球键抬起
 }
 
 #pragma mark - 4分宏
@@ -285,14 +291,41 @@
 
 - (void)setSplitPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) {
-        self.shiliufenBtn.layer.borderColor = [UIColor redColor].CGColor;
-        self.sifenBtn.layer.borderColor = [UIColor redColor].CGColor;
+    if (!gameCore) return;
+    // 方式1：带1个BOOL参数（按下/抬起状态）
+    const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
+    if (method) {
+        BOOL val = pressed;
+        void *args[1] = { &val };
+        [IL2CPPUtils callMethod:method instance:gameCore args:args];
         return;
     }
-    [IL2CPPUtils callBoolMethod:@"FreeTypePress" className:@"GameCoreCenter" instance:gameCore value:pressed];
+    // 方式2：无参方法（调用一次触发一次分身，仅按下时调用）
+    if (pressed) {
+        const MethodInfo *method2 = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:0];
+        if (method2) {
+            void *args[1] = { NULL };
+            [IL2CPPUtils callMethod:method2 instance:gameCore args:args];
+        }
+    }
 }
-
+- (void)saveButtonPosition:(NSInteger)type center:(CGPoint)center {
+    GlobalConfig *cfg = [GlobalConfig shared];
+    CGSize screenSize = [UIScreen mainScreen].bounds.size;
+    CGFloat nx = center.x / screenSize.width;
+    CGFloat ny = center.y / screenSize.height;
+    if (type == 0) {
+        MacroConfig m = cfg.shiliufen; m.buttonX = nx; m.buttonY = ny;
+        cfg.shiliufen = m;
+    } else if (type == 1) {
+        MacroConfig m = cfg.tuqiu; m.buttonX = nx; m.buttonY = ny;
+        cfg.tuqiu = m;
+    } else {
+        MacroConfig m = cfg.sifen; m.buttonX = nx; m.buttonY = ny;
+        cfg.sifen = m;
+    }
+    [cfg save];
+}
 #pragma mark - 手动触发
 - (void)triggerMacro:(NSInteger)type {
     switch (type) {
