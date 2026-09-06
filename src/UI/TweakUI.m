@@ -489,9 +489,9 @@
         if (val) [val getValue:&mc];
         sw.switchCtrl.on = mc.enabled;
         sw.onChange = ^(BOOL on) {
-            NSValue *cv = [[GlobalConfig shared] valueForKey:configKey];
+            NSValue *v = [[GlobalConfig shared] valueForKey:configKey];
             MacroConfig c;
-            if (cv) [cv getValue:&c];
+            if (v) [v getValue:&c];
             c.enabled = on;
             NSValue *vOut = [NSValue valueWithBytes:&c objCType:@encode(MacroConfig)];
             [[GlobalConfig shared] setValue:vOut forKey:configKey];
