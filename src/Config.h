@@ -29,6 +29,7 @@ typedef struct {
 
 // ===== 美化功能 =====
 @property (assign) BOOL peelEnabled;        // 去皮
+@property (assign) BOOL debugMode;
 
 // ===== 功能数值 =====
 @property (strong) NSString *mingziValue;
