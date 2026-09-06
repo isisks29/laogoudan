@@ -216,16 +216,21 @@
 
 #pragma mark - 核心：IL2CPP 调用
 - (void)setFeedPress:(BOOL)pressed {
-    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-    // 吐球：set_BtnIsFeeding 是带bool的setter
-    [IL2CPPUtils callBoolMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" instance:gameCore value:pressed];
+    // set_BtnIsFeeding 带1个bool参数，当作静态方法直接调用（instance=NULL）
+    const MethodInfo *method = [IL2CPPUtils getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
+    if (!method) return;
+    BOOL val = pressed;
+    void *args[1] = { &val };
+    [IL2CPPUtils callMethod:method instance:NULL args:args];
 }
+
 - (void)setSplitPress:(BOOL)pressed {
-    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-    // FreeTypePress 带1个bool参数（调试确认：1参✓ 0参✗）
-    [IL2CPPUtils callBoolMethod:@"FreeTypePress" className:@"GameCoreCenter" instance:gameCore value:pressed];
+    // FreeTypePress 带1个bool参数，当作静态方法直接调用
+    const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
+    if (!method) return;
+    BOOL val = pressed;
+    void *args[1] = { &val };
+    [IL2CPPUtils callMethod:method instance:NULL args:args];
 }
 
 #pragma mark - 16分宏
@@ -286,15 +291,20 @@
 #pragma mark - 4分宏
 - (void)handleSifen:(BOOL)pressed {
     if (!pressed) return;
-    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-    // FreeTypeClick 带1个bool参数（调试确认：1参✓ 0参✗）
-    [IL2CPPUtils callBoolMethod:@"FreeTypeClick" className:@"GameCoreCenter" instance:gameCore value:YES];
+    const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
+    if (!method) return;
+    BOOL val = YES;
+    void *args[1] = { &val };
+    [IL2CPPUtils callMethod:method instance:NULL args:args];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC),
                    dispatch_get_main_queue(), ^{
-        Il2CppObject *gc = [IL2CPPUtils getGameCore];
-        if (gc) [IL2CPPUtils callBoolMethod:@"FreeTypeClick" className:@"GameCoreCenter" instance:gc value:NO];
-    });
+                       const MethodInfo *m2 = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
+                       if (m2) {
+                           BOOL v2 = NO;
+                           void *a2[1] = { &v2 };
+                           [IL2CPPUtils callMethod:m2 instance:NULL args:a2];
+                       }
+                   });
 }
 
 #pragma mark - 手动触发
