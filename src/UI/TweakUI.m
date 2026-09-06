@@ -4,6 +4,7 @@
 #import "../MacroManager.h"
 #import "../FeatureManager.h"
 #import "../PeelManager.h"
+#import "../IL2CPPUtils.h"
 
 #define COLOR_BG [UIColor colorWithWhite:0.12 alpha:0.95]
 #define COLOR_CELL [UIColor colorWithWhite:0.18 alpha:1.0]
@@ -225,6 +226,27 @@
 @end
 
 @implementation TweakUI
+- (void)debugCheck {
+    NSString *info = [IL2CPPUtils debugInfo];
+    UIViewController *rootVC = nil;
+    UIWindow *appWindow = [UIApplication sharedApplication].delegate.window;
+    if (appWindow) rootVC = appWindow.rootViewController;
+    if (!rootVC) {
+        for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                for (UIWindow *w in scene.windows) {
+                    if (w.rootViewController && !w.hidden) { rootVC = w.rootViewController; break; }
+                }
+            }
+        }
+    }
+    if (!rootVC) return;
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"IL2CPP 调试检查"
+                                                                       message:info
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];
+    [rootVC presentViewController:alert animated:YES completion:nil];
+}
 
 - (void)showUI {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -473,6 +495,17 @@
     };
     [tab addSubview:debugRow];
     y += 52;
+        // 调试检查按钮
+    UIButton *debugBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    debugBtn.frame = CGRectMake(12, y, w - 24, 36);
+    [debugBtn setTitle:@"🔍 调试检查（查看IL2CPP状态）" forState:UIControlStateNormal];
+    [debugBtn setTitleColor:COLOR_ACCENT forState:UIControlStateNormal];
+    debugBtn.titleLabel.font = [UIFont systemFontOfSize:13];
+    debugBtn.backgroundColor = COLOR_CELL;
+    debugBtn.layer.cornerRadius = 6;
+    [debugBtn addTarget:self action:@selector(debugCheck) forControlEvents:UIControlEventTouchUpInside];
+    [tab addSubview:debugBtn];
+    y += 44;
 
     NSArray *macros = @[
         @{@"title": @"16分（按住循环）", @"config": @"shiliufen"},
