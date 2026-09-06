@@ -116,7 +116,8 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     if (!il2cpp_runtime_invoke) [self initialize];
     if (!method) return NULL;
     void *exc = NULL;
-    return il2cpp_runtime_invoke(method, instance, args, &exc);
+    // 无参方法传 NULL，有参方法传 args
+    return il2cpp_runtime_invoke(method, instance, args ? args : NULL, &exc);
 }
 
 + (void)callMethod:(const MethodInfo *)method instance:(Il2CppObject *)instance args:(void **)args returnBuf:(void *)retBuf {
@@ -204,16 +205,45 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 + (Il2CppObject *)getGameCore {
     static Il2CppObject *cached = NULL;
     if (cached) return cached;
-    // 调试确认：get_instance(小写)存在，get_Instance(大写)不存在
-    NSArray *getters = @[@"get_instance", @"get_Instance"];
+    if (!il2cpp_class_from_name || !il2cpp_class_get_method_from_name || !il2cpp_runtime_invoke) [self initialize];
+
+    Il2CppClass *klass = [self findClass:@"GameCoreCenter"];
+    if (!klass) return cached;
+
+    // 方式1：静态方法 getter（无参调用 args 必须传 NULL，不能传 { NULL }）
+    NSArray *getters = @[@"get_instance", @"get_Instance", @"getSingleton", @"get_Singleton",
+                          @"getCurrent", @"get_Current", @"getMain", @"get_Main",
+                          @"get_shared", @"get_Shared"];
     for (NSString *getter in getters) {
-        const MethodInfo *method = [self getMethod:getter className:@"GameCoreCenter" argsCount:0];
+        const MethodInfo *method = il2cpp_class_get_method_from_name(klass, getter.UTF8String, 0);
         if (method) {
-            void *args[1] = { NULL };
-            Il2CppObject *result = [self callStaticMethod:method args:args];
-            if (result) { cached = result; return cached; }
+            void *exc = NULL;
+            // 关键：无参方法第三个参数传 NULL，不是 { NULL }
+            Il2CppObject *result = il2cpp_runtime_invoke(method, NULL, NULL, &exc);
+            if (result && !exc) { cached = result; return cached; }
         }
     }
+
+    // 方式2：静态字段（遍历更多可能的字段名）
+    if (il2cpp_class_get_field_from_name && il2cpp_field_static_get_value) {
+        NSArray *fields = @[@"instance", @"Instance", @"_instance", @"_Instance",
+                             @"s_instance", @"m_instance", @"__instance",
+                             @"singleton", @"Singleton", @"_singleton",
+                             @"current", @"Current", @"_current",
+                             @"main", @"Main", @"_main",
+                             @"shared", @"Shared", @"_shared",
+                             @"staticInstance", @"_staticInstance", @"instanceField"];
+        for (NSString *f in fields) {
+            void *field = il2cpp_class_get_field_from_name(klass, f.UTF8String);
+            if (field) {
+                static uint8_t buf[256];
+                il2cpp_field_static_get_value(field, buf);
+                Il2CppObject *obj = *(Il2CppObject **)buf;
+                if (obj) { cached = obj; return cached; }
+            }
+        }
+    }
+
     return cached;
 }
 + (NSString *)debugInfo {
