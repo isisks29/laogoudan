@@ -1,4 +1,4 @@
-// IL2CPPUtils.m — Unity IL2CPP 方法调用实现
+// IL2CPPUtils.m — Unity IL2CPP 方法调用实
 #import "IL2CPPUtils.h"
 #import <dlfcn.h>
 #import <mach-o/dyld.h>
