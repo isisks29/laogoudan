@@ -219,6 +219,24 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     }
     return cached;
 }
++ (NSString *)debugInfo {
+    NSMutableString *info = [NSMutableString string];
+    Il2CppObject *core = [self getGameCore];
+    [info appendString:core ? @"GameCore: ✓ 已获取\n" : @"GameCore: ✗ 未获取\n"];
+    if (core) {
+        const MethodInfo *m0 = [self getMethod:@"get_Instance" className:@"GameCoreCenter" argsCount:0];
+        const MethodInfo *m1 = [self getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:0];
+        const MethodInfo *m2 = [self getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
+        const MethodInfo *m3 = [self getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
+        const MethodInfo *m4 = [self getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:0];
+        [info appendFormat:@"get_Instance(0参): %@\n", m0 ? @"✓" : @"✗"];
+        [info appendFormat:@"FreeTypePress(0参): %@\n", m1 ? @"✓" : @"✗"];
+        [info appendFormat:@"FreeTypePress(1参): %@\n", m2 ? @"✓" : @"✗"];
+        [info appendFormat:@"set_BtnIsFeeding(1参): %@\n", m3 ? @"✓" : @"✗"];
+        [info appendFormat:@"FreeTypeClick(0参): %@\n", m4 ? @"✓" : @"✗"];
+    }
+    return info;
+}
 
 + (Il2CppObject *)getSkillManager {
     // 示例：从 GameCore 获取技能/按键管理器
