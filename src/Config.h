@@ -50,7 +50,6 @@ typedef struct {
 // ===== UI 状态 =====
 @property (assign) BOOL menuVisible;
 @property (assign) NSInteger currentTab;
-@property (assign) BOOL debugMode;             // 调试模式（开启后可拖动宏按钮位置）
 
 - (void)save;
 - (void)load;
