@@ -33,6 +33,7 @@
     _fangluzhi = NO;
     _yaoganhuitan = NO;
     _peelEnabled = NO;
+    _debugMode = NO;
 
     // 功能数值
     _mingziValue = @"1.5";
@@ -68,6 +69,7 @@
     [ud setBool:_fangluzhi forKey:@"f_flz"];
     [ud setBool:_yaoganhuitan forKey:@"f_yght"];
     [ud setBool:_peelEnabled forKey:@"f_peel"];
+    [ud setBool:_debugMode forKey:@"debug_mode"];
 
     [ud setObject:_mingziValue forKey:@"v_mingzi"];
     [ud setObject:_nianheValue forKey:@"v_nianhe"];
