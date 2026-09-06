@@ -136,12 +136,22 @@
     _valueLabel.frame = CGRectMake(self.bounds.size.width - 90, 0, 76, self.bounds.size.height);
 }
 - (void)showInput {
-    UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+    UIViewController *rootVC = nil;
+    // 优先用 delegate.window
+    UIWindow *appWindow = [UIApplication sharedApplication].delegate.window;
+    if (appWindow) rootVC = appWindow.rootViewController;
+    // fallback：遍历 connectedScenes
     if (!rootVC) {
-        for (UIWindow *w in [UIApplication sharedApplication].windows) {
-            if (w.rootViewController) { rootVC = w.rootViewController; break; }
+        for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                for (UIWindow *w in scene.windows) {
+                    if (w.rootViewController && !w.hidden) { rootVC = w.rootViewController; break; }
+                }
+            }
         }
     }
+    if (!rootVC) return;
+
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:_titleLabel.text
                                                                        message:@"输入数值（支持小数）"
                                                                 preferredStyle:UIAlertControllerStyleAlert];
@@ -277,12 +287,13 @@
 - (void)toggleMenu {
     self.menuOpen = !self.menuOpen;
     self.overlayView.hidden = !self.menuOpen;
+    self.menuView.userInteractionEnabled = self.menuOpen;
     [UIView animateWithDuration:0.25 animations:^{
         self.menuView.alpha = self.menuOpen ? 1.0 : 0.0;
         self.menuView.transform = self.menuOpen ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.9, 0.9);
     }];
     if (self.menuOpen) [self refresh];
-    [[MacroManager shared] setMacroButtonsHidden:!self.menuOpen];
+    // 去掉了 setMacroButtonsHidden —— 宏按钮不随菜单隐藏
 }
 
 - (void)closeMenu {
@@ -296,6 +307,7 @@
     CGFloat h = MIN([UIScreen mainScreen].bounds.size.height - 120, 520);
 
     self.menuView = [[UIView alloc] initWithFrame:CGRectMake(20, 80, w, h)];
+    self.menuView.userInteractionEnabled = NO;
     self.menuView.backgroundColor = COLOR_BG;
     self.menuView.layer.cornerRadius = 14;
     self.menuView.clipsToBounds = YES;
