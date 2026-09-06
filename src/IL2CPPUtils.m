@@ -135,7 +135,7 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     if (!il2cpp_runtime_invoke) [self initialize];
     if (!method) return NULL;
     void *exc = NULL;
-    return il2cpp_runtime_invoke(method, (__bridge void *)instance ?: NULL, args ? args : NULL, &exc);
+    return il2cpp_runtime_invoke(method, instance, args ? args : NULL, &exc);
 }
 
 + (void)callMethod:(const MethodInfo *)method instance:(Il2CppObject *)instance args:(void **)args returnBuf:(void *)retBuf {
@@ -220,68 +220,7 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 
 #pragma mark - 游戏核心对象（需要根据具体游戏修改）
 
-+ (Il2CppObject *)getGameCore {
-    static Il2CppObject *cached = NULL;
-    static BOOL hasTried = NO;
-    if (hasTried) return cached;  // 只尝试一次，避免反复调用干扰游戏
-    hasTried = YES;
 
-    if (!il2cpp_class_from_name || !il2cpp_class_get_method_from_name || !il2cpp_runtime_invoke) [self initialize];
-
-    // 优先在 BobPlugins.dll（游戏主程序集）里找，找不到再遍历所有程序集
-    Il2CppClass *klass = [self findClassInImage:@"BobPlugins" className:@"GameCoreCenter"];
-    if (!klass) klass = [self findClass:@"GameCoreCenter"];
-    if (!klass) return cached;
-
-    // 静态方法 getter（无参调用 args 传 NULL）
-    NSArray *getters = @[@"get_instance", @"get_Instance", @"getSingleton", @"get_Singleton",
-                          @"getCurrent", @"get_Current", @"getMain", @"get_Main"];
-    for (NSString *getter in getters) {
-        const MethodInfo *method = il2cpp_class_get_method_from_name(klass, getter.UTF8String, 0);
-        if (method) {
-            void *exc = NULL;
-            Il2CppObject *result = il2cpp_runtime_invoke(method, NULL, NULL, &exc);
-            if (result) { cached = result; return cached; }
-        }
-    }
-
-    // 静态字段（更多可能的名字）
-    if (il2cpp_class_get_field_from_name && il2cpp_field_static_get_value) {
-        NSArray *fields = @[@"instance", @"Instance", @"_instance", @"_Instance",
-                             @"s_instance", @"m_instance", @"__instance",
-                             @"singleton", @"Singleton", @"_singleton",
-                             @"current", @"Current", @"_current",
-                             @"main", @"Main", @"_main", @"shared", @"Shared"];
-        for (NSString *f in fields) {
-            void *field = il2cpp_class_get_field_from_name(klass, f.UTF8String);
-            if (field) {
-                static uint8_t buf[256];
-                il2cpp_field_static_get_value(field, buf);
-                Il2CppObject *obj = *(Il2CppObject **)buf;
-                if (obj) { cached = obj; return cached; }
-            }
-        }
-    }
-        // 方式3：直接读取静态字段数据区域，扫描非空对象指针
-    if (il2cpp_class_get_static_field_data) {
-        void *staticData = il2cpp_class_get_static_field_data(klass);
-        if (staticData) {
-            void **ptr = (void **)staticData;
-            for (int i = 0; i < 24; i++) {
-                void *obj = ptr[i];
-                // 有效指针对齐检测：非空、4字节对齐、不是0xFFFFFFFF
-                if (obj && ((uintptr_t)obj & 0x7) == 0 && (uintptr_t)obj > 0x10000) {
-                    cached = obj;
-                    return cached;
-                }
-            }
-        }
-    }
-
-    return cached;
-}
-    return cached;
-}
 + (NSString *)debugInfo {
     NSMutableString *info = [NSMutableString string];
 
