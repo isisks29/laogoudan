@@ -463,6 +463,16 @@
 
     GlobalConfig *cfg = [GlobalConfig shared];
     CGFloat y = 12;
+        // 调试模式开关
+    SwitchRow *debugRow = [[SwitchRow alloc] initWithTitle:@"调试模式（开启后可拖动宏按钮）"];
+    debugRow.frame = CGRectMake(12, y, w - 24, 44);
+    debugRow.switchCtrl.on = cfg.debugMode;
+    debugRow.onChange = ^(BOOL on) {
+        cfg.debugMode = on;
+        [cfg save];
+    };
+    [tab addSubview:debugRow];
+    y += 52;
 
     NSArray *macros = @[
         @{@"title": @"16分（按住循环）", @"config": @"shiliufen"},
