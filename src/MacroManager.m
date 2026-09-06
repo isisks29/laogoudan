@@ -48,8 +48,8 @@
 
 - (void)setIsPressed:(BOOL)isPressed {
     _isPressed = isPressed;
-    self.alpha = isPressed ? 0.6 : 1.0;
-    self.transform = isPressed ? CGAffineTransformMakeScale(0.9, 0.9) : CGAffineTransformIdentity;
+    self.alpha = isPressed ? 0.5 : 1.0;
+    // 去掉transform缩放，之前0.9缩放导致长按时视觉跳动
 }
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -273,16 +273,23 @@
 #pragma mark - 核心：IL2CPP 调用（方法名对齐 ballspt.dylib）
 - (void)setFeedPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-    // ⚠️ IL2CPP方法名不带冒号！必须用 callBoolMethod，不能用 setBoolProperty
+    if (!gameCore) {
+        // 调试：获取不到GameCore时按钮边框闪红
+        self.shiliufenBtn.layer.borderColor = [UIColor redColor].CGColor;
+        self.tuqiuBtn.layer.borderColor = [UIColor redColor].CGColor;
+        return;
+    }
     [IL2CPPUtils callBoolMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" instance:gameCore value:pressed];
     [IL2CPPUtils callBoolMethod:@"set_skillFeedPress" className:@"GameCoreCenter" instance:gameCore value:pressed];
 }
 
 - (void)setSplitPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-    // FreeTypePress = 分身键按下（16分/4分都用这个）
+    if (!gameCore) {
+        self.shiliufenBtn.layer.borderColor = [UIColor redColor].CGColor;
+        self.sifenBtn.layer.borderColor = [UIColor redColor].CGColor;
+        return;
+    }
     [IL2CPPUtils callBoolMethod:@"FreeTypePress" className:@"GameCoreCenter" instance:gameCore value:pressed];
 }
 
