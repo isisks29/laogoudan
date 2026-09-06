@@ -90,6 +90,25 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     }
     return NULL;
 }
+// 在指定程序集里找类（避免遍历所有程序集时找到错误的同名类）
++ (Il2CppClass *)findClassInImage:(NSString *)imageNeedle className:(NSString *)className {
+    if (!il2cpp_domain_get || !il2cpp_domain_get_assemblies || !il2cpp_assembly_get_image || !il2cpp_image_get_name || !il2cpp_class_from_name) [self initialize];
+    void *domain = il2cpp_domain_get();
+    if (!domain) return NULL;
+    size_t size = 0;
+    void **assemblies = il2cpp_domain_get_assemblies(domain, &size);
+    if (!assemblies) return NULL;
+    for (size_t i = 0; i < size; i++) {
+        void *image = il2cpp_assembly_get_image(assemblies[i]);
+        if (!image) continue;
+        const char *name = il2cpp_image_get_name(image);
+        if (name && [[NSString stringWithUTF8String:name] containsString:imageNeedle]) {
+            void *klass = il2cpp_class_from_name(image, "", className.UTF8String);
+            if (klass) return klass;
+        }
+    }
+    return NULL;
+}
 
 + (Il2CppClass *)getClass:(NSString *)className namespace:(NSString *)ns {
     if (!il2cpp_class_from_name) [self initialize];
@@ -204,35 +223,36 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 
 + (Il2CppObject *)getGameCore {
     static Il2CppObject *cached = NULL;
-    if (cached) return cached;
+    static BOOL hasTried = NO;
+    if (hasTried) return cached;  // 只尝试一次，避免反复调用干扰游戏
+    hasTried = YES;
+
     if (!il2cpp_class_from_name || !il2cpp_class_get_method_from_name || !il2cpp_runtime_invoke) [self initialize];
 
-    Il2CppClass *klass = [self findClass:@"GameCoreCenter"];
+    // 优先在 BobPlugins.dll（游戏主程序集）里找，找不到再遍历所有程序集
+    Il2CppClass *klass = [self findClassInImage:@"BobPlugins" className:@"GameCoreCenter"];
+    if (!klass) klass = [self findClass:@"GameCoreCenter"];
     if (!klass) return cached;
 
-    // 方式1：静态方法 getter（无参调用 args 必须传 NULL，不能传 { NULL }）
+    // 静态方法 getter（无参调用 args 传 NULL）
     NSArray *getters = @[@"get_instance", @"get_Instance", @"getSingleton", @"get_Singleton",
-                          @"getCurrent", @"get_Current", @"getMain", @"get_Main",
-                          @"get_shared", @"get_Shared"];
+                          @"getCurrent", @"get_Current", @"getMain", @"get_Main"];
     for (NSString *getter in getters) {
         const MethodInfo *method = il2cpp_class_get_method_from_name(klass, getter.UTF8String, 0);
         if (method) {
             void *exc = NULL;
-            // 关键：无参方法第三个参数传 NULL，不是 { NULL }
             Il2CppObject *result = il2cpp_runtime_invoke(method, NULL, NULL, &exc);
-            if (result && !exc) { cached = result; return cached; }
+            if (result) { cached = result; return cached; }
         }
     }
 
-    // 方式2：静态字段（遍历更多可能的字段名）
+    // 静态字段（更多可能的名字）
     if (il2cpp_class_get_field_from_name && il2cpp_field_static_get_value) {
         NSArray *fields = @[@"instance", @"Instance", @"_instance", @"_Instance",
                              @"s_instance", @"m_instance", @"__instance",
                              @"singleton", @"Singleton", @"_singleton",
                              @"current", @"Current", @"_current",
-                             @"main", @"Main", @"_main",
-                             @"shared", @"Shared", @"_shared",
-                             @"staticInstance", @"_staticInstance", @"instanceField"];
+                             @"main", @"Main", @"_main", @"shared", @"Shared"];
         for (NSString *f in fields) {
             void *field = il2cpp_class_get_field_from_name(klass, f.UTF8String);
             if (field) {
