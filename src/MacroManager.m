@@ -9,15 +9,19 @@
 @property (copy) void (^onPress)(BOOL pressed);
 @end
 
-@implementation MacroButton
+@implementation MacroButton {
+    BOOL _isDragging;
+    BOOL _pressStarted;
+}
 - (instancetype)initWithType:(NSInteger)type {
     self = [super init];
     if (self) {
         _type = type;
         _isPressed = NO;
+        _isDragging = NO;
+        _pressStarted = NO;
         self.backgroundColor = [UIColor colorWithWhite:0.15 alpha:0.85];
         self.layer.borderWidth = 1.5;
-
         NSArray *titles = @[@"16", @"吐", @"4"];
         NSArray *colors = @[
             [UIColor colorWithRed:1.0 green:0.4 blue:0.4 alpha:1.0],
@@ -25,7 +29,6 @@
             [UIColor colorWithRed:0.4 green:1.0 blue:0.6 alpha:1.0],
         ];
         self.layer.borderColor = ((UIColor *)colors[type]).CGColor;
-
         _titleLabel = [[UILabel alloc] init];
         _titleLabel.text = titles[type];
         _titleLabel.textColor = [UIColor whiteColor];
@@ -48,8 +51,17 @@
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
     self.startPoint = [touch locationInView:self];
-    self.isPressed = YES;
-    if (self.onPress) self.onPress(YES);
+    _isDragging = NO;
+    _pressStarted = NO;
+    // 延迟150ms触发宏，如果期间移动了就取消（进入拖动模式）
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.15 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        if (!weakSelf.isDragging && !weakSelf.pressStarted) {
+            weakSelf.pressStarted = YES;
+            weakSelf.isPressed = YES;
+            if (weakSelf.onPress) weakSelf.onPress(YES);
+        }
+    });
 }
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
@@ -57,6 +69,13 @@
     CGFloat dx = pt.x - self.startPoint.x;
     CGFloat dy = pt.y - self.startPoint.y;
     if (fabs(dx) > 5 || fabs(dy) > 5) {
+        _isDragging = YES;
+        // 如果宏已经启动，立即停止
+        if (_pressStarted) {
+            _pressStarted = NO;
+            self.isPressed = NO;
+            if (self.onPress) self.onPress(NO);
+        }
         CGPoint center = self.center;
         center.x += dx;
         center.y += dy;
@@ -65,12 +84,20 @@
     }
 }
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    self.isPressed = NO;
-    if (self.onPress) self.onPress(NO);
+    if (_pressStarted) {
+        self.isPressed = NO;
+        if (self.onPress) self.onPress(NO);
+    }
+    _pressStarted = NO;
+    _isDragging = NO;
 }
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    self.isPressed = NO;
-    if (self.onPress) self.onPress(NO);
+    if (_pressStarted) {
+        self.isPressed = NO;
+        if (self.onPress) self.onPress(NO);
+    }
+    _pressStarted = NO;
+    _isDragging = NO;
 }
 @end
 
