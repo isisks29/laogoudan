@@ -213,78 +213,6 @@
     self.sifenBtn.hidden = hidden || !cfg.sifen.enabled;
 }
 
-#pragma mark - 16分宏
-- (void)handleShiliufen:(BOOL)pressed {
-    if (pressed) { [self startShiliufenLoop]; }
-    else { [self stopShiliufenLoop]; [self setSplitPress:NO]; }
-}
-- (void)startShiliufenLoop {
-    [self stopShiliufenLoop];
-    GlobalConfig *cfg = [GlobalConfig shared];
-    NSTimeInterval interval = (cfg.shiliufen.pressDuration + cfg.shiliufen.interval) / 1000.0;
-    self.shiliufenTimer = [NSTimer timerWithTimeInterval:interval
-                                                    target:self
-                                                  selector:@selector(shiliufenTick)
-                                                  userInfo:nil
-                                                   repeats:YES];
-    [[NSRunLoop mainRunLoop] addTimer:self.shiliufenTimer forMode:NSRunLoopCommonModes];
-    [self shiliufenTick];
-}
-- (void)shiliufenTick {
-    [self setSplitPress:YES];
-    GlobalConfig *cfg = [GlobalConfig shared];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, cfg.shiliufen.pressDuration * NSEC_PER_MSEC),
-                   dispatch_get_main_queue(), ^{ [self setSplitPress:NO]; });
-}
-- (void)stopShiliufenLoop {
-    [self.shiliufenTimer invalidate];
-    self.shiliufenTimer = nil;
-    [self setSplitPress:NO];
-}
-#pragma mark - 吐球宏
-- (void)handleTuqiu:(BOOL)pressed {
-    if (pressed) { [self startTuqiuLoop]; }
-    else { [self stopTuqiuLoop]; [self setFeedPress:NO]; }
-}
-- (void)startTuqiuLoop {
-    [self stopTuqiuLoop];
-    GlobalConfig *cfg = [GlobalConfig shared];
-    NSTimeInterval interval = (cfg.tuqiu.pressDuration + cfg.tuqiu.interval) / 1000.0;
-    self.tuqiuTimer = [NSTimer timerWithTimeInterval:interval
-                                                target:self
-                                              selector:@selector(tuqiuTick)
-                                              userInfo:nil
-                                               repeats:YES];
-    [[NSRunLoop mainRunLoop] addTimer:self.tuqiuTimer forMode:NSRunLoopCommonModes];
-    [self tuqiuTick];
-}
-- (void)tuqiuTick {
-    [self setFeedPress:YES];
-    GlobalConfig *cfg = [GlobalConfig shared];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, cfg.tuqiu.pressDuration * NSEC_PER_MSEC),
-                   dispatch_get_main_queue(), ^{ [self setFeedPress:NO]; });
-}
-- (void)stopTuqiuLoop {
-    [self.tuqiuTimer invalidate];
-    self.tuqiuTimer = nil;
-    [self setFeedPress:NO];
-}
-
-#pragma mark - 4分宏
-- (void)handleSifen:(BOOL)pressed {
-    if (!pressed) return;
-    [self triggerFreeTypeClick];
-}
-- (void)triggerFreeTypeClick {
-    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-    // 4分是单次点击，用 FreeTypeClick（无参方法），不是 FreeTypePress
-    const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:0];
-    if (method) {
-        void *args[1] = { NULL };
-        [IL2CPPUtils callMethod:method instance:gameCore args:args];
-    }
-}
 
 #pragma mark - 核心：IL2CPP 调用
 - (void)setFeedPress:(BOOL)pressed {
@@ -361,15 +289,24 @@
 #pragma mark - 手动触发
 - (void)triggerMacro:(NSInteger)type {
     switch (type) {
-        case 0: [self handleShiliufen:YES];
+        case 0: {
+            [self handleShiliufen:YES];
+            __weak typeof(self) weakSelf = self;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC),
-                           dispatch_get_main_queue(), ^{ [self handleShiliufen:NO]; });
+                           dispatch_get_main_queue(), ^{ [weakSelf handleShiliufen:NO]; });
             break;
-        case 1: [self handleTuqiu:YES];
+        }
+        case 1: {
+            [self handleTuqiu:YES];
+            __weak typeof(self) weakSelf = self;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC),
-                           dispatch_get_main_queue(), ^{ [self handleTuqiu:NO]; });
+                           dispatch_get_main_queue(), ^{ [weakSelf handleTuqiu:NO]; });
             break;
-        case 2: [self handleSifen:YES]; break;
+        }
+        case 2: {
+            [self handleSifen:YES];
+            break;
+        }
     }
 }
 }
