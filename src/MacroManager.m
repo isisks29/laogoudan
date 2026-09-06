@@ -49,8 +49,7 @@
 
 - (void)setIsPressed:(BOOL)isPressed {
     _isPressed = isPressed;
-    self.alpha = isPressed ? 0.5 : 1.0;
-    // 去掉transform缩放，之前0.9缩放导致长按时视觉跳动
+    // 不做任何视觉变化，保持原状
 }
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -287,60 +286,92 @@
     }
 }
 
-#pragma mark - 核心：IL2CPP 调用（方法名对齐 ballspt.dylib）
+#pragma mark - 核心：IL2CPP 调用
 - (void)setFeedPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) {
-        // 调试：获取不到GameCore时按钮边框闪红
-        self.shiliufenBtn.layer.borderColor = [UIColor redColor].CGColor;
-        self.tuqiuBtn.layer.borderColor = [UIColor redColor].CGColor;
-        return;
-    }
+    if (!gameCore) return;
+    // 吐球：set_BtnIsFeeding 是带bool的setter
     [IL2CPPUtils callBoolMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" instance:gameCore value:pressed];
-    [IL2CPPUtils callBoolMethod:@"set_skillFeedPress" className:@"GameCoreCenter" instance:gameCore value:pressed];
 }
 
-- (void)setSplitPress:(BOOL)pressed {
+#pragma mark - 16分宏
+- (void)handleShiliufen:(BOOL)pressed {
+    if (pressed) { [self startShiliufenLoop]; }
+    else { [self stopShiliufenLoop]; }
+}
+- (void)startShiliufenLoop {
+    [self stopShiliufenLoop];
+    GlobalConfig *cfg = [GlobalConfig shared];
+    NSTimeInterval interval = (cfg.shiliufen.pressDuration + cfg.shiliufen.interval) / 1000.0;
+    self.shiliufenTimer = [NSTimer timerWithTimeInterval:interval
+                                                    target:self
+                                                  selector:@selector(shiliufenTick)
+                                                  userInfo:nil
+                                                   repeats:YES];
+    [[NSRunLoop mainRunLoop] addTimer:self.shiliufenTimer forMode:NSRunLoopCommonModes];
+    [self shiliufenTick];
+}
+- (void)shiliufenTick {
+    // FreeTypePress 是无参方法，每次调用触发一次分身（不是setter！）
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;
-    // 方式1：带1个BOOL参数（按下/抬起状态）
-    const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
-    if (method) {
-        BOOL val = pressed;
-        void *args[1] = { &val };
-        [IL2CPPUtils callMethod:method instance:gameCore args:args];
-        return;
+    if (gameCore) {
+        [IL2CPPUtils callVoidMethod:@"FreeTypePress" className:@"GameCoreCenter" instance:gameCore];
     }
-    // 方式2：无参方法（调用一次触发一次分身，仅按下时调用）
-    if (pressed) {
-        const MethodInfo *method2 = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:0];
-        if (method2) {
-            void *args[1] = { NULL };
-            [IL2CPPUtils callMethod:method2 instance:gameCore args:args];
-        }
+}
+- (void)stopShiliufenLoop {
+    [self.shiliufenTimer invalidate];
+    self.shiliufenTimer = nil;
+}
+
+#pragma mark - 吐球宏
+- (void)handleTuqiu:(BOOL)pressed {
+    if (pressed) { [self startTuqiuLoop]; }
+    else { [self stopTuqiuLoop]; [self setFeedPress:NO]; }
+}
+- (void)startTuqiuLoop {
+    [self stopTuqiuLoop];
+    [self setFeedPress:YES];
+    GlobalConfig *cfg = [GlobalConfig shared];
+    NSTimeInterval interval = (cfg.tuqiu.pressDuration + cfg.tuqiu.interval) / 1000.0;
+    self.tuqiuTimer = [NSTimer timerWithTimeInterval:interval
+                                                target:self
+                                              selector:@selector(tuqiuTick)
+                                              userInfo:nil
+                                               repeats:YES];
+    [[NSRunLoop mainRunLoop] addTimer:self.tuqiuTimer forMode:NSRunLoopCommonModes];
+}
+- (void)tuqiuTick {
+    [self setFeedPress:YES];
+}
+- (void)stopTuqiuLoop {
+    [self.tuqiuTimer invalidate];
+    self.tuqiuTimer = nil;
+}
+
+#pragma mark - 4分宏
+- (void)handleSifen:(BOOL)pressed {
+    if (!pressed) return;
+    // FreeTypeClick 是无参方法，调用一次触发一次4分
+    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
+    if (gameCore) {
+        [IL2CPPUtils callVoidMethod:@"FreeTypeClick" className:@"GameCoreCenter" instance:gameCore];
     }
 }
 
 #pragma mark - 手动触发
 - (void)triggerMacro:(NSInteger)type {
     switch (type) {
-        case 0: {
-            [self handleShiliufen:YES];
+        case 0: [self handleShiliufen:YES];
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC),
                            dispatch_get_main_queue(), ^{ [self handleShiliufen:NO]; });
             break;
-        }
-        case 1: {
-            [self handleTuqiu:YES];
+        case 1: [self handleTuqiu:YES];
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC),
                            dispatch_get_main_queue(), ^{ [self handleTuqiu:NO]; });
             break;
-        }
-        case 2: {
-            [self handleSifen:YES];
-            break;
-        }
+        case 2: [self handleSifen:YES]; break;
     }
+}
 }
 
 @end
