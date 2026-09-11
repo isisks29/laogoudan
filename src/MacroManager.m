@@ -13,8 +13,9 @@
 @implementation MacroButton {
     BOOL _isDragging;
     BOOL _pressStarted;
-    CGPoint _startCenter;   // 新增：记录拖动开始时的中心位置
+    CGPoint _startCenter;
 }
+
 - (instancetype)initWithType:(NSInteger)type {
     self = [super init];
     if (self) {
@@ -54,11 +55,10 @@
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
-    self.startPoint = [touch locationInView:self.superview];  // 改：用superview坐标
-    _startCenter = self.center;                                  // 新增：记录初始中心
+    self.startPoint = [touch locationInView:self.superview];
+    _startCenter = self.center;
     _isDragging = NO;
     _pressStarted = NO;
-
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.15 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         MacroButton *strongSelf = weakSelf;
@@ -74,10 +74,9 @@
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     if (![GlobalConfig shared].debugMode) return;
     UITouch *touch = touches.anyObject;
-    CGPoint pt = [touch locationInView:self.superview];  // 改：用superview坐标
+    CGPoint pt = [touch locationInView:self.superview];
     CGFloat dx = pt.x - self.startPoint.x;
     CGFloat dy = pt.y - self.startPoint.y;
-
     if (fabs(dx) > 5 || fabs(dy) > 5) {
         _isDragging = YES;
         if (_pressStarted) {
@@ -85,7 +84,6 @@
             self.isPressed = NO;
             if (self.onPress) self.onPress(NO);
         }
-        // 改：用初始中心+总位移，不要每次累加center，不要更新startPoint
         self.center = CGPointMake(_startCenter.x + dx, _startCenter.y + dy);
     }
 }
@@ -98,7 +96,6 @@
     BOOL wasDragging = _isDragging;
     _pressStarted = NO;
     _isDragging = NO;
-    // 拖动结束：通知外部保存新位置
     if (wasDragging && self.onDragEnd) {
         self.onDragEnd(self.center);
     }
@@ -135,7 +132,7 @@
 
 - (instancetype)init {
     self = [super init];
-    if (self) {  }
+    if (self) { }
     return self;
 }
 
@@ -191,13 +188,12 @@
         s4size, s4size);
     self.sifenBtn.hidden = !cfg.sifen.enabled;
 }
+
 - (void)saveButtonPosition:(NSInteger)type center:(CGPoint)center {
     GlobalConfig *cfg = [GlobalConfig shared];
     CGSize screenSize = [UIScreen mainScreen].bounds.size;
     CGFloat relX = center.x / screenSize.width;
     CGFloat relY = center.y / screenSize.height;
-
-    NSString *key = nil;
     MacroConfig mc;
     if (type == 0) { mc = cfg.shiliufen; mc.buttonX = relX; mc.buttonY = relY; cfg.shiliufen = mc; }
     else if (type == 1) { mc = cfg.tuqiu; mc.buttonX = relX; mc.buttonY = relY; cfg.tuqiu = mc; }
@@ -213,31 +209,37 @@
     self.sifenBtn.hidden = hidden || !cfg.sifen.enabled;
 }
 
+#pragma mark - 核心：IL2CPP 实例方法调用（照搬JuziHub，需要GameCore实例）
 
-#pragma mark - 核心：IL2CPP 调用
 - (void)setFeedPress:(BOOL)pressed {
-    // set_BtnIsFeeding 带1个bool参数，当作静态方法直接调用（instance=NULL）
+    // 吐球键：set_BtnIsFeeding 是实例方法，需要GameCore实例
+    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
+    if (!gameCore) return;  // 实例还没准备好，静默返回，不干扰游戏
     const MethodInfo *method = [IL2CPPUtils getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
     BOOL val = pressed;
     void *args[1] = { &val };
-    [IL2CPPUtils callMethod:method instance:NULL args:args];
+    [IL2CPPUtils callMethod:method instance:gameCore args:args];
 }
 
 - (void)setSplitPress:(BOOL)pressed {
-    // FreeTypePress 带1个bool参数，当作静态方法直接调用
+    // 分身键：FreeTypePress 是实例方法，需要GameCore实例
+    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
+    if (!gameCore) return;
     const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
     BOOL val = pressed;
     void *args[1] = { &val };
-    [IL2CPPUtils callMethod:method instance:NULL args:args];
+    [IL2CPPUtils callMethod:method instance:gameCore args:args];
 }
 
 #pragma mark - 16分宏
+
 - (void)handleShiliufen:(BOOL)pressed {
     if (pressed) { [self startShiliufenLoop]; }
     else { [self stopShiliufenLoop]; [self setSplitPress:NO]; }
 }
+
 - (void)startShiliufenLoop {
     [self stopShiliufenLoop];
     GlobalConfig *cfg = [GlobalConfig shared];
@@ -250,6 +252,7 @@
     [[NSRunLoop mainRunLoop] addTimer:self.shiliufenTimer forMode:NSRunLoopCommonModes];
     [self shiliufenTick];
 }
+
 - (void)shiliufenTick {
     [self setSplitPress:YES];
     GlobalConfig *cfg = [GlobalConfig shared];
@@ -264,10 +267,12 @@
 }
 
 #pragma mark - 吐球宏
+
 - (void)handleTuqiu:(BOOL)pressed {
     if (pressed) { [self startTuqiuLoop]; }
     else { [self stopTuqiuLoop]; [self setFeedPress:NO]; }
 }
+
 - (void)startTuqiuLoop {
     [self stopTuqiuLoop];
     [self setFeedPress:YES];
@@ -276,38 +281,46 @@
     self.tuqiuTimer = [NSTimer timerWithTimeInterval:interval
                                                 target:self
                                               selector:@selector(tuqiuTick)
-                                              userInfo:nil
-                                               repeats:YES];
+                                                userInfo:nil
+                                                 repeats:YES];
     [[NSRunLoop mainRunLoop] addTimer:self.tuqiuTimer forMode:NSRunLoopCommonModes];
 }
+
 - (void)tuqiuTick {
     [self setFeedPress:YES];
 }
+
 - (void)stopTuqiuLoop {
     [self.tuqiuTimer invalidate];
     self.tuqiuTimer = nil;
 }
 
 #pragma mark - 4分宏
+
 - (void)handleSifen:(BOOL)pressed {
     if (!pressed) return;
+    Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
+    if (!gameCore) return;
     const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
     BOOL val = YES;
     void *args[1] = { &val };
-    [IL2CPPUtils callMethod:method instance:NULL args:args];
+    [IL2CPPUtils callMethod:method instance:gameCore args:args];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC),
                    dispatch_get_main_queue(), ^{
+                       Il2CppObject *gc = [IL2CPPUtils getGameCore];
+                       if (!gc) return;
                        const MethodInfo *m2 = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
                        if (m2) {
                            BOOL v2 = NO;
                            void *a2[1] = { &v2 };
-                           [IL2CPPUtils callMethod:m2 instance:NULL args:a2];
+                           [IL2CPPUtils callMethod:m2 instance:gc args:a2];
                        }
                    });
 }
 
 #pragma mark - 手动触发
+
 - (void)triggerMacro:(NSInteger)type {
     switch (type) {
         case 0: {
