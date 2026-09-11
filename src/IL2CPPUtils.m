@@ -3,18 +3,17 @@
 #import <dlfcn.h>
 #import <mach-o/dyld.h>
 
-// IL2CPP 函数指针
 static void *(*il2cpp_domain_get)(void) = NULL;
 static void *(*il2cpp_domain_get_assemblies)(void *domain, size_t *size) = NULL;
 static void *(*il2cpp_assembly_get_image)(void *assembly) = NULL;
-static void *(*il2cpp_class_from_name)(void *image, const char *namespace, const char *name) = NULL;
+static void *(*il2cpp_class_from_name)(void *image, const char *ns, const char *name) = NULL;
 static void *(*il2cpp_class_get_method_from_name)(void *klass, const char *name, int argsCount) = NULL;
 static void *(*il2cpp_runtime_invoke)(const void *method, void *obj, void **params, void **exc) = NULL;
 static void *(*il2cpp_class_get_field_from_name)(void *klass, const char *name) = NULL;
 static void *(*il2cpp_field_get_value)(void *obj, void *field) = NULL;
 static void *(*il2cpp_field_static_get_value)(void *field, void *value) = NULL;
 static void *(*il2cpp_image_get_name)(void *image) = NULL;
-// 新增：JuziHub也用这两个
+// 新增：照搬JuziHub
 static void (*il2cpp_runtime_class_init)(void *klass) = NULL;
 static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
 
@@ -24,10 +23,8 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
     static BOOL initialized = NO;
     if (initialized) return;
     initialized = YES;
-
     void *handle = dlopen("/System/Library/Frameworks/UnityFramework.framework/UnityFramework", RTLD_LAZY);
     if (!handle) handle = RTLD_DEFAULT;
-
     #define LOAD_SYM(name) name = (void *)dlsym(handle, #name)
     LOAD_SYM(il2cpp_domain_get);
     LOAD_SYM(il2cpp_domain_get_assemblies);
@@ -60,9 +57,7 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
         void *image = il2cpp_assembly_get_image(assemblies[i]);
         if (image && il2cpp_image_get_name) {
             const char *name = il2cpp_image_get_name(image);
-            if (name && [[NSString stringWithUTF8String:name] containsString:assemblyName]) {
-                return image;
-            }
+            if (name && [[NSString stringWithUTF8String:name] containsString:assemblyName]) return image;
         }
     }
     return NULL;
@@ -146,7 +141,7 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
     NSString *setterName = [NSString stringWithFormat:@"set_%@", propertyName];
     const MethodInfo *method = [self getMethod:setterName className:className argsCount:1];
     if (!method) return NO;
-    BOOL val = value;
+    int val = value ? 1 : 0;
     void *args[1] = { &val };
     [self callMethod:method instance:instance args:args];
     return YES;
@@ -155,7 +150,7 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
 + (BOOL)callBoolMethod:(NSString *)methodName className:(NSString *)className instance:(Il2CppObject *)instance value:(BOOL)value {
     const MethodInfo *method = [self getMethod:methodName className:className argsCount:1];
     if (!method) return NO;
-    BOOL val = value;
+    int val = value ? 1 : 0;
     void *args[1] = { &val };
     [self callMethod:method instance:instance args:args];
     return YES;
@@ -205,15 +200,12 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
 
     if (!il2cpp_class_from_name || !il2cpp_class_get_method_from_name || !il2cpp_runtime_invoke) [self initialize];
 
-    // 优先在 BobPlugins.dll（游戏主程序集）里找
     Il2CppClass *klass = [self findClassInImage:@"BobPlugins" className:@"GameCoreCenter"];
     if (!klass) klass = [self findClass:@"GameCoreCenter"];
     if (!klass) return NULL;
 
     // 关键1：先初始化类（JuziHub也用il2cpp_runtime_class_init）
-    if (il2cpp_runtime_class_init) {
-        il2cpp_runtime_class_init(klass);
-    }
+    if (il2cpp_runtime_class_init) il2cpp_runtime_class_init(klass);
 
     // 关键2：调用 get_instance 静态方法（调试确认是小写get_instance，无参）
     NSArray *getters = @[@"get_instance", @"get_Instance"];
@@ -222,14 +214,11 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
         if (method) {
             void *exc = NULL;
             Il2CppObject *result = il2cpp_runtime_invoke(method, NULL, NULL, &exc);
-            if (result && !exc) {
-                cached = result;
-                return cached;
-            }
+            if (result && !exc) { cached = result; return cached; }
         }
     }
 
-    // 关键3：备用 — 直接读取静态字段数据区域（JuziHub用il2cpp_class_get_static_field_data）
+    // 关键3：备用 — 直接读取静态字段数据区域
     if (il2cpp_class_get_static_field_data) {
         void *staticData = il2cpp_class_get_static_field_data(klass);
         if (staticData) {
@@ -244,7 +233,7 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
         }
     }
 
-    return NULL;  // 失败返回NULL，不缓存，下次调用还能重试
+    return NULL;
 }
 
 + (Il2CppObject *)getSkillManager {
@@ -280,7 +269,7 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
             const MethodInfo *m = il2cpp_class_get_method_from_name(klass, g.UTF8String, 0);
             if (m) [info appendFormat:@"%@: ✓\n", g];
         }
-                [info appendString:@"\n=== 业务方法(0参/1参) ===\n"];
+        [info appendString:@"\n=== 业务方法(0参/1参) ===\n"];
         NSArray *methods = @[@"FreeTypePress", @"FreeTypeClick",
                              @"set_BtnIsFeeding", @"get_BtnIsFeeding",
                              @"set_FeedBtnUp", @"get_FeedBtnUp",
@@ -290,19 +279,9 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
             const MethodInfo *m1 = il2cpp_class_get_method_from_name(klass, mname.UTF8String, 1);
             if (m0 || m1) [info appendFormat:@"%@(0%@ 1%@)\n", mname, m0?@"✓":@"✗", m1?@"✓":@"✗"];
         }
-
-        // 检查 UITouchControl 类（按键控制可能在这个类）
         Il2CppClass *touchKlass = [self findClass:@"UITouchControl"];
         [info appendFormat:@"\n=== UITouchControl类 ===\n%@\n", touchKlass ? @"✓ 存在" : @"✗ 不存在"];
-        if (touchKlass) {
-            NSArray *touchMethods = @[@"OnPress", @"OnDragOver", @"ResetJoystick", @"set_JostickDir", @"SendMove"];
-            for (NSString *tm in touchMethods) {
-                const MethodInfo *tm0 = il2cpp_class_get_method_from_name(touchKlass, tm.UTF8String, 0);
-                const MethodInfo *tm1 = il2cpp_class_get_method_from_name(touchKlass, tm.UTF8String, 1);
-                const MethodInfo *tm2 = il2cpp_class_get_method_from_name(touchKlass, tm.UTF8String, 2);
-                if (tm0 || tm1 || tm2) [info appendFormat:@"%@(0%@ 1%@ 2%@)\n", tm, tm0?@"✓":@"✗", tm1?@"✓":@"✗", tm2?@"✓":@"✗"];
-            }
-        }
+    }
     return info;
 }
 
