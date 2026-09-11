@@ -196,16 +196,25 @@
 - (void)setFeedPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
-    // set_BtnIsFeeding 是实例方法，必须传gameCore，不能传NULL
-    const MethodInfo *method = [IL2CPPUtils getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
-    if (!method) return;
-    int val = pressed ? 1 : 0;
-    void *args[1] = { &val };
-    [IL2CPPUtils callMethod:method instance:gameCore args:args];
-    // SendSpit 无参实例方法，真正触发吐球动作
-    const MethodInfo *spit = [IL2CPPUtils getMethod:@"SendSpit" className:@"GameCoreCenter" argsCount:0];
-    if (spit && pressed) {
-        [IL2CPPUtils callMethod:spit instance:gameCore args:NULL];
+    // 吐球键两个状态都要设置
+    const MethodInfo *feeding = [IL2CPPUtils getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
+    if (feeding) {
+        int val = pressed ? 1 : 0;
+        void *args[1] = { &val };
+        [IL2CPPUtils callMethod:feeding instance:gameCore args:args];
+    }
+    const MethodInfo *skill = [IL2CPPUtils getMethod:@"set_skillFeedPress" className:@"GameCoreCenter" argsCount:1];
+    if (skill) {
+        int val = pressed ? 1 : 0;
+        void *args[1] = { &val };
+        [IL2CPPUtils callMethod:skill instance:gameCore args:args];
+    }
+    // 触发一次吐球
+    if (pressed) {
+        const MethodInfo *spit = [IL2CPPUtils getMethod:@"SendSpit" className:@"GameCoreCenter" argsCount:0];
+        if (spit) {
+            [IL2CPPUtils callMethod:spit instance:gameCore args:NULL];
+        }
     }
 }
 
@@ -268,6 +277,7 @@
     NSTimeInterval interval = (cfg.tuqiu.pressDuration + cfg.tuqiu.interval) / 1000.0;
     self.tuqiuTimer = [NSTimer timerWithTimeInterval:interval target:self selector:@selector(tuqiuTick) userInfo:nil repeats:YES];
     [[NSRunLoop mainRunLoop] addTimer:self.tuqiuTimer forMode:NSRunLoopCommonModes];
+    [self tuqiuTick];
 }
 
 - (void)tuqiuTick { [self setFeedPress:YES]; }
@@ -283,26 +293,31 @@
     if (!pressed) return;
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
-    // FreeTypeClick 实例方法 + SendDevide 触发4分
-    const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
-    if (method) {
+    // 第一次分身
+    [self triggerSplitOnce:gameCore];
+    // 50ms后第二次分身
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC),
+                   dispatch_get_main_queue(), ^{
+                       [self triggerSplitOnce:gameCore];
+                   });
+}
+
+- (void)triggerSplitOnce:(Il2CppObject *)gameCore {
+    const MethodInfo *press = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
+    if (press) {
         int val = 1;
         void *args[1] = { &val };
-        [IL2CPPUtils callMethod:method instance:gameCore args:args];
+        [IL2CPPUtils callMethod:press instance:gameCore args:args];
     }
     const MethodInfo *div = [IL2CPPUtils getMethod:@"SendDevide" className:@"GameCoreCenter" argsCount:0];
     if (div) {
         [IL2CPPUtils callMethod:div instance:gameCore args:NULL];
-        [IL2CPPUtils callMethod:div instance:gameCore args:NULL];
     }
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC),
-                   dispatch_get_main_queue(), ^{
-                       if (method) {
-                           int v2 = 0;
-                           void *a2[1] = { &v2 };
-                           [IL2CPPUtils callMethod:method instance:gameCore args:a2];
-                       }
-                   });
+    if (press) {
+        int val = 0;
+        void *args[1] = { &val };
+        [IL2CPPUtils callMethod:press instance:gameCore args:args];
+    }
 }
 
 #pragma mark - 手动触发
