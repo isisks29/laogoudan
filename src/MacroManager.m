@@ -196,21 +196,33 @@
 - (void)setFeedPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
+    // set_BtnIsFeeding 是实例方法，必须传gameCore，不能传NULL
     const MethodInfo *method = [IL2CPPUtils getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
     int val = pressed ? 1 : 0;
     void *args[1] = { &val };
     [IL2CPPUtils callMethod:method instance:gameCore args:args];
+    // SendSpit 无参实例方法，真正触发吐球动作
+    const MethodInfo *spit = [IL2CPPUtils getMethod:@"SendSpit" className:@"GameCoreCenter" argsCount:0];
+    if (spit && pressed) {
+        [IL2CPPUtils callMethod:spit instance:gameCore args:NULL];
+    }
 }
 
 - (void)setSplitPress:(BOOL)pressed {
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
+    // FreeTypePress 是实例方法，必须传gameCore
     const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
     int val = pressed ? 1 : 0;
     void *args[1] = { &val };
     [IL2CPPUtils callMethod:method instance:gameCore args:args];
+    // SendDevide 无参实例方法，真正触发分身动作
+    const MethodInfo *div = [IL2CPPUtils getMethod:@"SendDevide" className:@"GameCoreCenter" argsCount:0];
+    if (div && pressed) {
+        [IL2CPPUtils callMethod:div instance:gameCore args:NULL];
+    }
 }
 
 #pragma mark - 16分宏
@@ -271,17 +283,26 @@
     if (!pressed) return;
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
+    // FreeTypeClick 实例方法 + SendDevide 触发4分
     const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
-    if (!method) return;
-    int val = 1;
-    void *args[1] = { &val };
-    [IL2CPPUtils callMethod:method instance:gameCore args:args];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-        Il2CppObject *gc = [IL2CPPUtils getGameCore];
-        if (!gc) return;
-        const MethodInfo *m2 = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
-        if (m2) { int v2 = 0; void *a2[1] = { &v2 }; [IL2CPPUtils callMethod:m2 instance:gc args:a2]; }
-    });
+    if (method) {
+        int val = 1;
+        void *args[1] = { &val };
+        [IL2CPPUtils callMethod:method instance:gameCore args:args];
+    }
+    const MethodInfo *div = [IL2CPPUtils getMethod:@"SendDevide" className:@"GameCoreCenter" argsCount:0];
+    if (div) {
+        [IL2CPPUtils callMethod:div instance:gameCore args:NULL];
+        [IL2CPPUtils callMethod:div instance:gameCore args:NULL];
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC),
+                   dispatch_get_main_queue(), ^{
+                       if (method) {
+                           int v2 = 0;
+                           void *a2[1] = { &v2 };
+                           [IL2CPPUtils callMethod:method instance:gameCore args:a2];
+                       }
+                   });
 }
 
 #pragma mark - 手动触发
