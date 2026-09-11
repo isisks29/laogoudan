@@ -212,23 +212,21 @@
 #pragma mark - 核心：IL2CPP 实例方法调用（照搬JuziHub，需要GameCore实例）
 
 - (void)setFeedPress:(BOOL)pressed {
-    // 吐球键：set_BtnIsFeeding 是实例方法，需要GameCore实例
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
-    if (!gameCore) return;  // 实例还没准备好，静默返回，不干扰游戏
+    if (!gameCore) return;
     const MethodInfo *method = [IL2CPPUtils getMethod:@"set_BtnIsFeeding" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
-    BOOL val = pressed;
+    int val = pressed ? 1 : 0;  // 关键：用int而不是BOOL
     void *args[1] = { &val };
     [IL2CPPUtils callMethod:method instance:gameCore args:args];
 }
 
 - (void)setSplitPress:(BOOL)pressed {
-    // 分身键：FreeTypePress 是实例方法，需要GameCore实例
     Il2CppObject *gameCore = [IL2CPPUtils getGameCore];
     if (!gameCore) return;
     const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypePress" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
-    BOOL val = pressed;
+    int val = pressed ? 1 : 0;  // 关键：用int而不是BOOL
     void *args[1] = { &val };
     [IL2CPPUtils callMethod:method instance:gameCore args:args];
 }
@@ -303,7 +301,7 @@
     if (!gameCore) return;
     const MethodInfo *method = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
     if (!method) return;
-    BOOL val = YES;
+    int val = 1;  // 改为int
     void *args[1] = { &val };
     [IL2CPPUtils callMethod:method instance:gameCore args:args];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC),
@@ -312,7 +310,7 @@
                        if (!gc) return;
                        const MethodInfo *m2 = [IL2CPPUtils getMethod:@"FreeTypeClick" className:@"GameCoreCenter" argsCount:1];
                        if (m2) {
-                           BOOL v2 = NO;
+                           int v2 = 0;  // 改为int
                            void *a2[1] = { &v2 };
                            [IL2CPPUtils callMethod:m2 instance:gc args:a2];
                        }
