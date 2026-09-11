@@ -1,4 +1,4 @@
-// IL2CPPUtils.m — Unity IL2CPP 方法调用实
+// IL2CPPUtils.m — Unity IL2CPP 方法调用实现
 #import "IL2CPPUtils.h"
 #import <dlfcn.h>
 #import <mach-o/dyld.h>
@@ -14,7 +14,9 @@ static void *(*il2cpp_class_get_field_from_name)(void *klass, const char *name) 
 static void *(*il2cpp_field_get_value)(void *obj, void *field) = NULL;
 static void *(*il2cpp_field_static_get_value)(void *field, void *value) = NULL;
 static void *(*il2cpp_image_get_name)(void *image) = NULL;
-static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = NULL;
+// 新增：JuziHub也用这两个
+static void (*il2cpp_runtime_class_init)(void *klass) = NULL;
+static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
 
 @implementation IL2CPPUtils
 
@@ -22,18 +24,10 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     static BOOL initialized = NO;
     if (initialized) return;
     initialized = YES;
-    
-    // 从 UnityFramework 或主可执行文件中获取 il2cpp 函数
-    // Unity 游戏的 il2cpp 通常在 UnityFramework.framework 中
-    void *handle = NULL;
-    
-    // 尝试 UnityFramework
-    handle = dlopen("/System/Library/Frameworks/UnityFramework.framework/UnityFramework", RTLD_LAZY);
-    if (!handle) {
-        // 尝试从主可执行文件获取
-        handle = RTLD_DEFAULT;
-    }
-    
+
+    void *handle = dlopen("/System/Library/Frameworks/UnityFramework.framework/UnityFramework", RTLD_LAZY);
+    if (!handle) handle = RTLD_DEFAULT;
+
     #define LOAD_SYM(name) name = (void *)dlsym(handle, #name)
     LOAD_SYM(il2cpp_domain_get);
     LOAD_SYM(il2cpp_domain_get_assemblies);
@@ -45,6 +39,8 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     LOAD_SYM(il2cpp_field_get_value);
     LOAD_SYM(il2cpp_field_static_get_value);
     LOAD_SYM(il2cpp_image_get_name);
+    LOAD_SYM(il2cpp_runtime_class_init);
+    LOAD_SYM(il2cpp_class_get_static_field_data);
     #undef LOAD_SYM
 }
 
@@ -55,14 +51,11 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 
 + (Il2CppImage *)getImage:(NSString *)assemblyName {
     if (!il2cpp_domain_get_assemblies || !il2cpp_assembly_get_image) [self initialize];
-    
     Il2CppDomain *domain = [self getDomain];
     if (!domain) return NULL;
-    
     size_t size = 0;
     void **assemblies = il2cpp_domain_get_assemblies(domain, &size);
     if (!assemblies) return NULL;
-    
     for (size_t i = 0; i < size; i++) {
         void *image = il2cpp_assembly_get_image(assemblies[i]);
         if (image && il2cpp_image_get_name) {
@@ -74,7 +67,7 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     }
     return NULL;
 }
-// 遍历所有程序集找类（不依赖Assembly-CSharp名称）
+
 + (Il2CppClass *)findClass:(NSString *)className {
     if (!il2cpp_domain_get || !il2cpp_domain_get_assemblies || !il2cpp_assembly_get_image || !il2cpp_class_from_name) [self initialize];
     void *domain = il2cpp_domain_get();
@@ -90,7 +83,7 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     }
     return NULL;
 }
-// 在指定程序集里找类（避免遍历所有程序集时找到错误的同名类）
+
 + (Il2CppClass *)findClassInImage:(NSString *)imageNeedle className:(NSString *)className {
     if (!il2cpp_domain_get || !il2cpp_domain_get_assemblies || !il2cpp_assembly_get_image || !il2cpp_image_get_name || !il2cpp_class_from_name) [self initialize];
     void *domain = il2cpp_domain_get();
@@ -112,7 +105,6 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 
 + (Il2CppClass *)getClass:(NSString *)className namespace:(NSString *)ns {
     if (!il2cpp_class_from_name) [self initialize];
-    // 游戏没有 Assembly-CSharp.dll，直接遍历所有74个程序集找
     return [self findClass:className];
 }
 
@@ -143,11 +135,7 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     if (!method || !retBuf) return;
     void *exc = NULL;
     void *ret = il2cpp_runtime_invoke(method, instance, args, &exc);
-    if (ret) {
-        // 对于值类型，返回值直接在 ret 指向的内存中
-        // 这里简化处理，实际需要根据方法返回类型解析
-        memcpy(retBuf, ret, sizeof(uintptr_t));
-    }
+    if (ret) memcpy(retBuf, ret, sizeof(uintptr_t));
 }
 
 + (Il2CppObject *)callStaticMethod:(const MethodInfo *)method args:(void **)args {
@@ -155,11 +143,9 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 }
 
 + (BOOL)setBoolProperty:(NSString *)propertyName className:(NSString *)className instance:(Il2CppObject *)instance value:(BOOL)value {
-    // setter 方法名通常是 set_XXX
     NSString *setterName = [NSString stringWithFormat:@"set_%@", propertyName];
     const MethodInfo *method = [self getMethod:setterName className:className argsCount:1];
     if (!method) return NO;
-    
     BOOL val = value;
     void *args[1] = { &val };
     [self callMethod:method instance:instance args:args];
@@ -167,26 +153,24 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 }
 
 + (BOOL)callBoolMethod:(NSString *)methodName className:(NSString *)className instance:(Il2CppObject *)instance value:(BOOL)value {
-    // 直接调用方法名，不加 set_ 前缀（用于 FreeTypePress 这类非 setter 方法）
     const MethodInfo *method = [self getMethod:methodName className:className argsCount:1];
     if (!method) return NO;
-    
     BOOL val = value;
     void *args[1] = { &val };
     [self callMethod:method instance:instance args:args];
     return YES;
 }
+
 + (void)callVoidMethod:(NSString *)methodName className:(NSString *)className instance:(Il2CppObject *)instance {
     const MethodInfo *method = [self getMethod:methodName className:className argsCount:0];
     if (!method || !instance) return;
-    void *args[1] = { NULL };
-    [self callMethod:method instance:instance args:args];
+    [self callMethod:method instance:instance args:NULL];
 }
+
 + (BOOL)setFloatProperty:(NSString *)propertyName className:(NSString *)className instance:(Il2CppObject *)instance value:(float)val {
     NSString *setterName = [NSString stringWithFormat:@"set_%@", propertyName];
     const MethodInfo *method = [self getMethod:setterName className:className argsCount:1];
     if (!method) return NO;
-    
     void *args[1] = { &val };
     [self callMethod:method instance:instance args:args];
     return YES;
@@ -198,7 +182,6 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
     if (!klass) return NULL;
     void *field = il2cpp_class_get_field_from_name(klass, fieldName.UTF8String);
     if (!field) return NULL;
-    
     static uint8_t valueBuf[256];
     il2cpp_field_static_get_value(field, valueBuf);
     return *(void **)valueBuf;
@@ -207,104 +190,104 @@ static void *(*il2cpp_class_get_static_field_value)(void *klass, void *field) = 
 + (Il2CppObject *)getField:(NSString *)fieldName instance:(Il2CppObject *)instance {
     if (!il2cpp_class_get_field_from_name || !il2cpp_field_get_value) [self initialize];
     if (!instance) return NULL;
-    
-    // 从对象获取类
     Il2CppClass *klass = *(Il2CppClass **)instance;
     if (!klass) return NULL;
-    
     void *field = il2cpp_class_get_field_from_name(klass, fieldName.UTF8String);
     if (!field) return NULL;
-    
     return il2cpp_field_get_value(instance, field);
 }
 
-#pragma mark - 游戏核心对象（需要根据具体游戏修改）
+#pragma mark - 游戏核心对象（照搬JuziHub架构）
 
++ (Il2CppObject *)getGameCore {
+    static Il2CppObject *cached = NULL;
+    if (cached) return cached;  // 成功后缓存，失败不缓存（下次还能重试）
 
-+ (NSString *)debugInfo {
-    NSMutableString *info = [NSMutableString string];
+    if (!il2cpp_class_from_name || !il2cpp_class_get_method_from_name || !il2cpp_runtime_invoke) [self initialize];
 
-    // 1. IL2CPP 函数指针状态
-    [info appendString:@"=== IL2CPP 函数指针 ===\n"];
-    [info appendFormat:@"domain_get: %@\n", il2cpp_domain_get ? @"✓" : @"✗"];
-    [info appendFormat:@"class_from_name: %@\n", il2cpp_class_from_name ? @"✓" : @"✗"];
-    [info appendFormat:@"class_get_method: %@\n", il2cpp_class_get_method_from_name ? @"✓" : @"✗"];
-    [info appendFormat:@"runtime_invoke: %@\n", il2cpp_runtime_invoke ? @"✓" : @"✗"];
-    [info appendFormat:@"field_static_get_value: %@\n", il2cpp_field_static_get_value ? @"✓" : @"✗"];
+    // 优先在 BobPlugins.dll（游戏主程序集）里找
+    Il2CppClass *klass = [self findClassInImage:@"BobPlugins" className:@"GameCoreCenter"];
+    if (!klass) klass = [self findClass:@"GameCoreCenter"];
+    if (!klass) return NULL;
 
-    // 2. 列出所有程序集
-    if (il2cpp_domain_get && il2cpp_domain_get_assemblies && il2cpp_assembly_get_image && il2cpp_image_get_name) {
-        void *domain = il2cpp_domain_get();
-        size_t size = 0;
-        void **assemblies = il2cpp_domain_get_assemblies(domain, &size);
-        [info appendFormat:@"\n=== 程序集列表(共%zu个) ===\n", size];
-        for (size_t i = 0; i < size && i < 25; i++) {
-            void *image = il2cpp_assembly_get_image(assemblies[i]);
-            if (image) {
-                const char *name = il2cpp_image_get_name(image);
-                if (name) [info appendFormat:@"%s\n", name];
+    // 关键1：先初始化类（JuziHub也用il2cpp_runtime_class_init）
+    if (il2cpp_runtime_class_init) {
+        il2cpp_runtime_class_init(klass);
+    }
+
+    // 关键2：调用 get_instance 静态方法（调试确认是小写get_instance，无参）
+    NSArray *getters = @[@"get_instance", @"get_Instance"];
+    for (NSString *getter in getters) {
+        const MethodInfo *method = il2cpp_class_get_method_from_name(klass, getter.UTF8String, 0);
+        if (method) {
+            void *exc = NULL;
+            Il2CppObject *result = il2cpp_runtime_invoke(method, NULL, NULL, &exc);
+            if (result && !exc) {
+                cached = result;
+                return cached;
             }
         }
     }
 
-    // 3. 尝试找类
-    [info appendString:@"\n=== 类查找 ===\n"];
-    Il2CppClass *klass = [self findClass:@"GameCoreCenter"];
-    [info appendFormat:@"GameCoreCenter: %@\n", klass ? @"✓" : @"✗"];
-    Il2CppClass *klass2 = [self findClass:@"GameCore"];
-    [info appendFormat:@"GameCore: %@\n", klass2 ? @"✓" : @"✗"];
-
-    // 4. 如果找到 GameCoreCenter，列出所有可能的单例字段和方法
-    if (klass) {
-        [info appendString:@"\n=== 静态字段 ===\n"];
-        NSArray *fields = @[@"Instance", @"instance", @"Singleton", @"singleton",
-                             @"Current", @"current", @"Main", @"main",
-                             @"_instance", @"_Instance", @"_singleton", @"shared", @"Shared"];
-        for (NSString *f in fields) {
-            void *field = il2cpp_class_get_field_from_name(klass, f.UTF8String);
-            if (field) {
-                [info appendFormat:@"%@: ✓", f];
-                if (il2cpp_field_static_get_value) {
-                    static uint8_t buf[256];
-                    il2cpp_field_static_get_value(field, buf);
-                    Il2CppObject *obj = *(Il2CppObject **)buf;
-                    [info appendFormat:@" (值%@)", obj ? @"非空" : @"为空"];
+    // 关键3：备用 — 直接读取静态字段数据区域（JuziHub用il2cpp_class_get_static_field_data）
+    if (il2cpp_class_get_static_field_data) {
+        void *staticData = il2cpp_class_get_static_field_data(klass);
+        if (staticData) {
+            void **ptr = (void **)staticData;
+            for (int i = 0; i < 32; i++) {
+                void *obj = ptr[i];
+                if (obj && ((uintptr_t)obj & 0x7) == 0 && (uintptr_t)obj > 0x10000) {
+                    cached = obj;
+                    return cached;
                 }
-                [info appendString:@"\n"];
             }
         }
+    }
+
+    return NULL;  // 失败返回NULL，不缓存，下次调用还能重试
+}
+
++ (Il2CppObject *)getSkillManager {
+    static Il2CppObject *cached = NULL;
+    if (cached) return cached;
+    Il2CppObject *core = [self getGameCore];
+    if (!core) return NULL;
+    cached = [self getField:@"skillManager" instance:core];
+    return cached;
+}
+
+#pragma mark - 调试信息
+
++ (NSString *)debugInfo {
+    NSMutableString *info = [NSMutableString string];
+    [info appendString:@"=== IL2CPP 函数指针 ===\n"];
+    [info appendFormat:@"domain_get: %@\n", il2cpp_domain_get ? @"✓" : @"✗"];
+    [info appendFormat:@"class_from_name: %@\n", il2cpp_class_from_name ? @"✓" : @"✗"];
+    [info appendFormat:@"runtime_invoke: %@\n", il2cpp_runtime_invoke ? @"✓" : @"✗"];
+    [info appendFormat:@"runtime_class_init: %@\n", il2cpp_runtime_class_init ? @"✓" : @"✗"];
+    [info appendFormat:@"static_field_data: %@\n", il2cpp_class_get_static_field_data ? @"✓" : @"✗"];
+
+    Il2CppObject *core = [self getGameCore];
+    [info appendFormat:@"\n=== GameCore实例 ===\n%@\n", core ? @"✓ 已获取" : @"✗ 未获取（重试中）"];
+
+    Il2CppClass *klass = [self findClass:@"GameCoreCenter"];
+    [info appendFormat:@"\n=== 类查找 ===\nGameCoreCenter: %@\n", klass ? @"✓" : @"✗"];
+
+    if (klass) {
         [info appendString:@"\n=== Getter方法 ===\n"];
-        NSArray *getters = @[@"get_Instance", @"get_instance", @"getSingleton", @"get_Singleton",
-                              @"getCurrent", @"get_Current", @"getMain", @"get_Main",
-                              @"get_shared", @"get_Shared", @"Instance", @"instance"];
+        NSArray *getters = @[@"get_instance", @"get_Instance"];
         for (NSString *g in getters) {
             const MethodInfo *m = il2cpp_class_get_method_from_name(klass, g.UTF8String, 0);
             if (m) [info appendFormat:@"%@: ✓\n", g];
         }
         [info appendString:@"\n=== 业务方法 ===\n"];
-        NSArray *methods = @[@"FreeTypePress", @"FreeTypeClick", @"set_BtnIsFeeding",
-                              @"get_BtnIsFeeding", @"set_FeedBtnUp", @"set_skillFeedPress"];
+        NSArray *methods = @[@"FreeTypePress", @"FreeTypeClick", @"set_BtnIsFeeding", @"set_skillFeedPress"];
         for (NSString *mname in methods) {
-            const MethodInfo *m0 = il2cpp_class_get_method_from_name(klass, mname.UTF8String, 0);
             const MethodInfo *m1 = il2cpp_class_get_method_from_name(klass, mname.UTF8String, 1);
-            if (m0 || m1) [info appendFormat:@"%@(0参%@ 1参%@)\n", mname, m0?@"✓":@"✗", m1?@"✓":@"✗"];
+            if (m1) [info appendFormat:@"%@(1参✓)\n", mname];
         }
     }
-
     return info;
-}
-+ (Il2CppObject *)getSkillManager {
-    // 示例：从 GameCore 获取技能/按键管理器
-    // 这是宏操作的核心对象，调用它的 set_skillFeedPress 等方法
-    static Il2CppObject *cached = NULL;
-    if (cached) return cached;
-    
-    Il2CppObject *core = [self getGameCore];
-    if (!core) return NULL;
-    
-    // 通过字段获取 SkillManager
-    cached = [self getField:@"skillManager" instance:core];
-    return cached;
 }
 
 @end
