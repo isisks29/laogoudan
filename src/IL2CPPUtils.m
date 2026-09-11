@@ -280,13 +280,29 @@ static void *(*il2cpp_class_get_static_field_data)(void *klass) = NULL;
             const MethodInfo *m = il2cpp_class_get_method_from_name(klass, g.UTF8String, 0);
             if (m) [info appendFormat:@"%@: ✓\n", g];
         }
-        [info appendString:@"\n=== 业务方法 ===\n"];
-        NSArray *methods = @[@"FreeTypePress", @"FreeTypeClick", @"set_BtnIsFeeding", @"set_skillFeedPress"];
+                [info appendString:@"\n=== 业务方法(0参/1参) ===\n"];
+        NSArray *methods = @[@"FreeTypePress", @"FreeTypeClick",
+                             @"set_BtnIsFeeding", @"get_BtnIsFeeding",
+                             @"set_FeedBtnUp", @"get_FeedBtnUp",
+                             @"set_skillFeedPress"];
         for (NSString *mname in methods) {
+            const MethodInfo *m0 = il2cpp_class_get_method_from_name(klass, mname.UTF8String, 0);
             const MethodInfo *m1 = il2cpp_class_get_method_from_name(klass, mname.UTF8String, 1);
-            if (m1) [info appendFormat:@"%@(1参✓)\n", mname];
+            if (m0 || m1) [info appendFormat:@"%@(0%@ 1%@)\n", mname, m0?@"✓":@"✗", m1?@"✓":@"✗"];
         }
-    }
+
+        // 检查 UITouchControl 类（按键控制可能在这个类）
+        Il2CppClass *touchKlass = [self findClass:@"UITouchControl"];
+        [info appendFormat:@"\n=== UITouchControl类 ===\n%@\n", touchKlass ? @"✓ 存在" : @"✗ 不存在"];
+        if (touchKlass) {
+            NSArray *touchMethods = @[@"OnPress", @"OnDragOver", @"ResetJoystick", @"set_JostickDir", @"SendMove"];
+            for (NSString *tm in touchMethods) {
+                const MethodInfo *tm0 = il2cpp_class_get_method_from_name(touchKlass, tm.UTF8String, 0);
+                const MethodInfo *tm1 = il2cpp_class_get_method_from_name(touchKlass, tm.UTF8String, 1);
+                const MethodInfo *tm2 = il2cpp_class_get_method_from_name(touchKlass, tm.UTF8String, 2);
+                if (tm0 || tm1 || tm2) [info appendFormat:@"%@(0%@ 1%@ 2%@)\n", tm, tm0?@"✓":@"✗", tm1?@"✓":@"✗", tm2?@"✓":@"✗"];
+            }
+        }
     return info;
 }
 
