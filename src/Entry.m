@@ -15,7 +15,6 @@ void dylib_initialize(void)
 {
     @autoreleasepool {
         [[GlobalConfig shared] load];
-
         __block id observer = nil;
         observer = [[NSNotificationCenter defaultCenter]
             addObserverForName:UIApplicationDidFinishLaunchingNotification
@@ -28,7 +27,6 @@ void dylib_initialize(void)
                         }
                         doInitialize();
                     }];
-
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC),
                        dispatch_get_main_queue(), ^{
             if (observer) {
@@ -43,7 +41,7 @@ void dylib_initialize(void)
 static void doInitialize(void) {
     @autoreleasepool {
         [[AntiDetect sharedInstance] startProtect];
-        [[FeatureManager sharedManager] setup];
+        [[FeatureManager sharedManager] startLoop];  // 关键：启动循环写入+内存搜索
         [[MacroManager shared] setup];
         [TweakUI showFloatingWindow];
         if ([GlobalConfig shared].peelEnabled) {
