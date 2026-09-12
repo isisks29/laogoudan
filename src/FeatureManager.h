@@ -15,5 +15,14 @@
 - (void)applyFeatures;
 // 重新搜索内存地址（游戏更新或地址变化时调用）
 - (void)rescanMemory;
+
+// 调试信息：每个功能搜到的地址数量（用于UI显示）
+@property (assign, readonly) NSUInteger sldResultCount;   // 双连点
+@property (assign, readonly) NSUInteger jdtResultCount;   // 解断吐
+@property (assign, readonly) NSUInteger mzResultCount;    // 名字大小
+@property (assign, readonly) NSUInteger nhResultCount;    // 粘合
+@property (assign, readonly) NSUInteger jlmResultCount;   // 解限
+@property (assign, readonly) NSUInteger syResultCount;    // 视野
+@property (assign, readonly) NSUInteger lmResultCount;    // 灵敏
 @end
 #endif // FEATURE_MANAGER_H
