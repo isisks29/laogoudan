@@ -225,10 +225,13 @@
     // 监听系统录屏通知，拦截录屏状态
     // iOS 11+ 有 UIScreenCapturedDidChangeNotification
     if (@available(iOS 11.0, *)) {
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(screenCaptureChanged:)
-                                                     name:UIScreenCapturedDidChangeNotification
-                                                   object:nil];
+        // 【临时注释：UIScreenCapturedDidChangeNotification属于UIKit，后续再启用】
+//[[NSNotificationCenter defaultCenter] addObserverForName:UIScreenCapturedDidChangeNotification
+//                                                      object:nil
+//                                                       queue:[NSOperationQueue mainQueue]
+//                                                  usingBlock:^(NSNotification *note) {
+//                                                      //录屏绕过逻辑
+//                                                  }];
     }
 }
 
