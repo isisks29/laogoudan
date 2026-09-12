@@ -95,7 +95,7 @@
     _slider.frame = CGRectMake(14, 28, self.bounds.size.width - 28, 30);
 }
 - (void)changed {
-    _valueLabel.text = [NSString stringWithFormat:@"%.1f", _slider.value];
+    _valueLabel.text = [NSString stringWithFormat:@"%.2f", _slider.value];
     if (_onChange) _onChange(_slider.value);
 }
 @end
@@ -138,10 +138,8 @@
 }
 - (void)showInput {
     UIViewController *rootVC = nil;
-    // 优先用 delegate.window
     UIWindow *appWindow = [UIApplication sharedApplication].delegate.window;
     if (appWindow) rootVC = appWindow.rootViewController;
-    // fallback：遍历 connectedScenes
     if (!rootVC) {
         for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
             if ([scene isKindOfClass:[UIWindowScene class]]) {
@@ -152,7 +150,6 @@
         }
     }
     if (!rootVC) return;
-
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:_titleLabel.text
                                                                        message:@"输入数值（支持小数）"
                                                                 preferredStyle:UIAlertControllerStyleAlert];
@@ -226,6 +223,7 @@
 @end
 
 @implementation TweakUI
+
 - (void)debugCheck {
     NSString *info = [IL2CPPUtils debugInfo];
     UIViewController *rootVC = nil;
@@ -268,19 +266,16 @@
 
 - (void)setupFloatButton {
     if (self.floatWindow) return;
-
     self.floatWindow = [[PassThroughWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     self.floatWindow.windowLevel = UIWindowLevelAlert + 100;
     self.floatWindow.backgroundColor = [UIColor clearColor];
     self.floatWindow.hidden = NO;
 
-    // 全屏遮罩（菜单打开时显示，拦截游戏触摸）
     self.overlayView = [[UIView alloc] initWithFrame:self.floatWindow.bounds];
     self.overlayView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.3];
     self.overlayView.hidden = YES;
     [self.floatWindow addSubview:self.overlayView];
 
-    // 悬浮球
     self.floatButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.floatButton.frame = CGRectMake(20, 100, 50, 50);
     self.floatButton.backgroundColor = COLOR_ACCENT;
@@ -293,7 +288,6 @@
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragFloat:)];
     [self.floatButton addGestureRecognizer:pan];
 
-    // 挂载宏按钮到悬浮窗
     [[MacroManager shared] setupMacroButtonsInWindow:self.floatWindow];
 }
 
@@ -315,7 +309,6 @@
         self.menuView.transform = self.menuOpen ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.9, 0.9);
     }];
     if (self.menuOpen) [self refresh];
-    // 去掉了 setMacroButtonsHidden —— 宏按钮不随菜单隐藏
 }
 
 - (void)closeMenu {
@@ -324,7 +317,6 @@
 
 - (void)setupMenu {
     if (self.menuView) return;
-
     CGFloat w = MIN([UIScreen mainScreen].bounds.size.width - 40, 340);
     CGFloat h = MIN([UIScreen mainScreen].bounds.size.height - 120, 520);
 
@@ -337,7 +329,6 @@
     self.menuView.transform = CGAffineTransformMakeScale(0.9, 0.9);
     [self.floatWindow addSubview:self.menuView];
 
-    // 右上角关闭按钮
     self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.closeButton.frame = CGRectMake(w - 40, 8, 32, 32);
     [self.closeButton setTitle:@"✕" forState:UIControlStateNormal];
@@ -346,7 +337,6 @@
     [self.closeButton addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
     [self.menuView addSubview:self.closeButton];
 
-    // 标签栏：功能 / 宏 / 美化
     self.tabControl = [[UISegmentedControl alloc] initWithItems:@[@"功能", @"宏", @"美化"]];
     self.tabControl.frame = CGRectMake(12, 12, w - 60, 32);
     self.tabControl.selectedSegmentIndex = 0;
@@ -354,7 +344,6 @@
     [self.tabControl addTarget:self action:@selector(tabChanged) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:self.tabControl];
 
-    // 横向分页滚动
     self.scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 52, w, h - 52)];
     self.scrollView.pagingEnabled = YES;
     self.scrollView.delegate = self;
@@ -395,7 +384,6 @@
     CGFloat w = self.scrollView.bounds.size.width;
     CGFloat h = self.scrollView.bounds.size.height;
     UIScrollView *tab = [self createVerticalTabAtX:0 width:w height:h];
-
     GlobalConfig *cfg = [GlobalConfig shared];
     CGFloat y = 12;
 
@@ -427,27 +415,57 @@
     }
 
     y += 8;
-    NSArray *inputs = @[
-        @{@"title": @"名字大小", @"key": @"mingziValue"},
-        @{@"title": @"粘合大小", @"key": @"nianheValue"},
-        @{@"title": @"视野大小", @"key": @"shiyeValue"},
-        @{@"title": @"回弹数值", @"key": @"huitanValue"},
-    ];
 
-    for (NSDictionary *s in inputs) {
-        NSString *val = [cfg valueForKey:s[@"key"]] ?: @"1.0";
-        InputRow *row = [[InputRow alloc] initWithTitle:s[@"title"] value:val];
-        row.frame = CGRectMake(12, y, w - 24, 40);
-        NSString *key = s[@"key"];
-        row.onInput = ^(NSString *value) {
-            [cfg setValue:value forKey:key];
-            [cfg save];
-        };
-        [tab addSubview:row];
-        y += 46;
-    }
+    // ===== 数值滑条（已确认的范围） =====
+    // 名字大小：搜索1.875，滑条0~5.0
+    SliderRow *mzSlider = [[SliderRow alloc] initWithTitle:@"名字缩放" min:0.0f max:5.0f];
+    mzSlider.frame = CGRectMake(12, y, w - 24, 62);
+    mzSlider.slider.value = [cfg.mingziValue floatValue];
+    mzSlider.valueLabel.text = [NSString stringWithFormat:@"%.2f", mzSlider.slider.value];
+    mzSlider.onChange = ^(float v) {
+        cfg.mingziValue = [NSString stringWithFormat:@"%.2f", v];
+        [cfg save];
+    };
+    [tab addSubview:mzSlider];
+    y += 70;
+
+    // 粘合：搜索1.70，滑条0~3.0
+    SliderRow *nhSlider = [[SliderRow alloc] initWithTitle:@"粘合大小" min:0.0f max:3.0f];
+    nhSlider.frame = CGRectMake(12, y, w - 24, 62);
+    nhSlider.slider.value = [cfg.nianheValue floatValue];
+    nhSlider.valueLabel.text = [NSString stringWithFormat:@"%.2f", nhSlider.slider.value];
+    nhSlider.onChange = ^(float v) {
+        cfg.nianheValue = [NSString stringWithFormat:@"%.2f", v];
+        [cfg save];
+    };
+    [tab addSubview:nhSlider];
+    y += 70;
+
+    // 视野：搜索1.0，滑条0.5~10.0
+    SliderRow *sySlider = [[SliderRow alloc] initWithTitle:@"视野大小" min:0.5f max:10.0f];
+    sySlider.frame = CGRectMake(12, y, w - 24, 62);
+    sySlider.slider.value = [cfg.shiyeValue floatValue];
+    sySlider.valueLabel.text = [NSString stringWithFormat:@"%.2f", sySlider.slider.value];
+    sySlider.onChange = ^(float v) {
+        cfg.shiyeValue = [NSString stringWithFormat:@"%.2f", v];
+        [cfg save];
+    };
+    [tab addSubview:sySlider];
+    y += 70;
+
+    // 回弹数值（保留弹窗输入）
+    InputRow *huitanInput = [[InputRow alloc] initWithTitle:@"回弹数值" value:cfg.huitanValue];
+    huitanInput.frame = CGRectMake(12, y, w - 24, 40);
+    huitanInput.onInput = ^(NSString *value) {
+        cfg.huitanValue = value;
+        [cfg save];
+    };
+    [tab addSubview:huitanInput];
+    y += 50;
 
     y += 8;
+
+    // 解限配置（保留，默认值已改好）
     UILabel *jlTitle = [[UILabel alloc] initWithFrame:CGRectMake(14, y, w - 28, 20)];
     jlTitle.text = @"解限高级配置";
     jlTitle.textColor = COLOR_TEXT_DIM;
@@ -482,10 +500,9 @@
     CGFloat w = self.scrollView.bounds.size.width;
     CGFloat h = self.scrollView.bounds.size.height;
     UIScrollView *tab = [self createVerticalTabAtX:w width:w height:h];
-
     GlobalConfig *cfg = [GlobalConfig shared];
     CGFloat y = 12;
-        // 调试模式开关
+
     SwitchRow *debugRow = [[SwitchRow alloc] initWithTitle:@"调试模式（开启后可拖动宏按钮）"];
     debugRow.frame = CGRectMake(12, y, w - 24, 44);
     debugRow.switchCtrl.on = cfg.debugMode;
@@ -495,7 +512,7 @@
     };
     [tab addSubview:debugRow];
     y += 52;
-        // 调试检查按钮
+
     UIButton *debugBtn = [UIButton buttonWithType:UIButtonTypeSystem];
     debugBtn.frame = CGRectMake(12, y, w - 24, 36);
     [debugBtn setTitle:@"🔍 调试检查（查看IL2CPP状态）" forState:UIControlStateNormal];
@@ -584,11 +601,9 @@
     CGFloat w = self.scrollView.bounds.size.width;
     CGFloat h = self.scrollView.bounds.size.height;
     UIScrollView *tab = [self createVerticalTabAtX:w * 2 width:w height:h];
-
     GlobalConfig *cfg = [GlobalConfig shared];
     CGFloat y = 12;
 
-    // 去皮开关
     SwitchRow *peelRow = [[SwitchRow alloc] initWithTitle:@"去皮"];
     peelRow.frame = CGRectMake(12, y, w - 24, 44);
     peelRow.switchCtrl.on = cfg.peelEnabled;
