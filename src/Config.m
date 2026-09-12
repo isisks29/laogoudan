@@ -35,14 +35,14 @@
     _peelEnabled = NO;
     _debugMode = NO;
 
-    // 功能数值
-    _mingziValue = @"1.5";
-    _nianheValue = @"1.7";
-    _shiyeValue = @"50";
+    // 功能数值（已确认的搜索值/默认值）
+    _mingziValue = @"1.875";   // 名字大小：搜索1.875，滑条0~5.0
+    _nianheValue = @"1.7";     // 粘合：搜索1.70，滑条0~3.0
+    _shiyeValue = @"1.0";      // 视野：搜索1.0，滑条0.5~10.0
     _huitanValue = @"1.0";
 
-    // 解限
-    _jielimWriteValue = @"10";
+    // 解限：搜索100，写入99999997952.0（~1e11，21亿多）
+    _jielimWriteValue = @"99999997952";
     _jielimWriteAsInt = NO;
     _jielimSearchValue = @"100";
 
@@ -57,7 +57,6 @@
 
 - (void)save {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-
     [ud setBool:_shuangliandian forKey:@"f_sld"];
     [ud setBool:_jielim forKey:@"f_jlm"];
     [ud setBool:_lingmin forKey:@"f_lm"];
@@ -105,7 +104,6 @@
     if ([ud objectForKey:@"v_nianhe"]) _nianheValue = [ud stringForKey:@"v_nianhe"];
     if ([ud objectForKey:@"v_shiye"]) _shiyeValue = [ud stringForKey:@"v_shiye"];
     if ([ud objectForKey:@"v_huitan"]) _huitanValue = [ud stringForKey:@"v_huitan"];
-
     if ([ud objectForKey:@"jl_write"]) _jielimWriteValue = [ud stringForKey:@"jl_write"];
     if ([ud objectForKey:@"jl_asint"]) _jielimWriteAsInt = [ud boolForKey:@"jl_asint"];
     if ([ud objectForKey:@"jl_search"]) _jielimSearchValue = [ud stringForKey:@"jl_search"];
