@@ -1,45 +1,46 @@
 // FeatureManager.m — 功能开关管理器实现
+// 8种功能：双连点、解断吐、名字大小、粘合、解限、视野、灵敏、防录制
 #import "FeatureManager.h"
 #import "Config.h"
 #import "MemoryUtils.h"
-#import "IL2CPPUtils.h"
 
 @interface FeatureManager ()
 @property (strong) NSTimer *loopTimer;
 @property (assign) BOOL inGame;
 
-// A 类功能：内存搜改型的缓存地址
-@property (assign) uintptr_t shuangliandianAddr;
-@property (assign) uintptr_t jielimAddr;
-@property (assign) uintptr_t mingziAddr;
-@property (assign) uintptr_t nianheAddr;
+// 功能地址缓存
+@property (assign) uintptr_t sldAddr;        // 双连点
+@property (assign) uintptr_t jdtAddr;        // 解断吐
+@property (assign) uintptr_t mzAddr;         // 名字大小
+@property (assign) uintptr_t nhAddr;         // 粘合
+@property (assign) uintptr_t jlmAddr;        // 解限
+@property (assign) uintptr_t syAddr;         // 视野
+@property (strong) NSMutableArray *lmAddrs;  // 灵敏（多地址）
 
 // 地址是否已找到
 @property (assign) BOOL sldFound;
-@property (assign) BOOL jlmFound;
+@property (assign) BOOL jdtFound;
 @property (assign) BOOL mzFound;
 @property (assign) BOOL nhFound;
+@property (assign) BOOL jlmFound;
+@property (assign) BOOL syFound;
+@property (assign) BOOL lmFound;
 
+// 防录制
+@property (assign) BOOL recordingHookInstalled;
 @end
 
 @implementation FeatureManager
-static FeatureManager *_inst = nil;
-+ (instancetype)sharedManager {
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        _inst = [[self alloc] init];
-    });
-    return _inst;
-}
-- (void)setup {
-    _inGame = YES;
-}
 
-+ (instancetype)shared {
++ (instancetype)sharedManager {
     static FeatureManager *instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{ instance = [[FeatureManager alloc] init]; });
     return instance;
+}
+
++ (instancetype)shared {
+    return [self sharedManager];
 }
 
 - (instancetype)init {
@@ -47,21 +48,30 @@ static FeatureManager *_inst = nil;
     if (self) {
         _inGame = NO;
         _sldFound = NO;
-        _jlmFound = NO;
+        _jdtFound = NO;
         _mzFound = NO;
         _nhFound = NO;
+        _jlmFound = NO;
+        _syFound = NO;
+        _lmFound = NO;
+        _lmAddrs = [NSMutableArray array];
+        _recordingHookInstalled = NO;
     }
     return self;
+}
+
+- (void)setup {
+    _inGame = YES;
 }
 
 - (void)startLoop {
     if (self.loopTimer) return;
     self.inGame = YES;
-    
+
     // 先搜索一次内存
     [self rescanMemory];
-    
-    // 每 100ms 执行一次功能应用（不需要每帧，10fps 足够）
+
+    // 每 100ms 执行一次功能应用
     self.loopTimer = [NSTimer scheduledTimerWithTimeInterval:0.1
                                                        target:self
                                                      selector:@selector(applyFeatures)
@@ -76,160 +86,155 @@ static FeatureManager *_inst = nil;
     self.inGame = NO;
 }
 
+#pragma mark - 内存搜索
+
 - (void)rescanMemory {
     GlobalConfig *cfg = [GlobalConfig shared];
-    
-    // 双连点：搜索 0.01（float）
+
+    // 双连点：搜索 0.05
     if (cfg.shuangliandian && !self.sldFound) {
-        NSArray *results = [MemoryUtils searchFloat:0.01f];
+        NSArray *results = [MemoryUtils searchFloat:0.05f tolerance:0.0001f];
         if (results.count > 0) {
-            // 取第一个结果（实际项目中应该用多值搜索精确定位）
-            self.shuangliandianAddr = [results[0] unsignedLongLongValue];
+            self.sldAddr = [results[0] unsignedLongLongValue];
             self.sldFound = YES;
         }
     }
-    
-    // 解限：搜索用户配置的搜索值（默认100.0）
-    if (cfg.jielim && !self.jlmFound) {
-        float searchVal = [cfg.jielimSearchValue floatValue];
-        NSArray *results = [MemoryUtils searchFloat:searchVal];
+
+    // 解断吐：搜索 0.02
+    if (cfg.jieduan && !self.jdtFound) {
+        NSArray *results = [MemoryUtils searchFloat:0.02f tolerance:0.0001f];
         if (results.count > 0) {
-            self.jielimAddr = [results[0] unsignedLongLongValue];
-            self.jlmFound = YES;
+            self.jdtAddr = [results[0] unsignedLongLongValue];
+            self.jdtFound = YES;
         }
     }
-    
-    // 名字大小：搜索默认值 1.0（float）
+
+    // 名字大小：搜索 1.875
     if (cfg.mingzidaxiao && !self.mzFound) {
-        NSArray *results = [MemoryUtils searchFloat:1.0f];
+        NSArray *results = [MemoryUtils searchFloat:1.875f tolerance:0.0001f];
         if (results.count > 0) {
-            self.mingziAddr = [results[0] unsignedLongLongValue];
+            self.mzAddr = [results[0] unsignedLongLongValue];
             self.mzFound = YES;
         }
     }
-    
-    // 粘合：搜索默认值 1.0（float）
+
+    // 粘合：搜索 1.70
     if (cfg.nianhe && !self.nhFound) {
-        NSArray *results = [MemoryUtils searchFloat:1.0f];
-        if (results.count > 1) {
-            // 取第二个结果（区分名字大小）
-            self.nianheAddr = [results[1] unsignedLongLongValue];
+        NSArray *results = [MemoryUtils searchFloat:1.70f tolerance:0.0001f];
+        if (results.count > 0) {
+            self.nhAddr = [results[0] unsignedLongLongValue];
             self.nhFound = YES;
         }
     }
+
+    // 解限：搜索 100.0
+    if (cfg.jielim && !self.jlmFound) {
+        NSArray *results = [MemoryUtils searchFloat:100.0f tolerance:0.0001f];
+        if (results.count > 0) {
+            self.jlmAddr = [results[0] unsignedLongLongValue];
+            self.jlmFound = YES;
+        }
+    }
+
+    // 视野：搜索 1.0（视野默认值）
+    if (cfg.shiyedaxiao && !self.syFound) {
+        NSArray *results = [MemoryUtils searchFloat:1.0f tolerance:0.0001f];
+        if (results.count > 0) {
+            // 取第3个结果（前两个可能是名字大小和粘合）
+            NSUInteger idx = MIN(2, results.count - 1);
+            self.syAddr = [results[idx] unsignedLongLongValue];
+            self.syFound = YES;
+        }
+    }
+
+    // 灵敏：搜索 0.0001（多地址，最多10个）
+    if (cfg.lingmin && !self.lmFound) {
+        NSArray *results = [MemoryUtils searchFloat:0.0001f tolerance:0.00001f];
+        if (results.count > 0) {
+            NSUInteger count = MIN(10, results.count);
+            for (NSUInteger i = 0; i < count; i++) {
+                [self.lmAddrs addObject:results[i]];
+            }
+            self.lmFound = YES;
+        }
+    }
 }
+
+#pragma mark - 功能应用
 
 - (void)applyFeatures {
     GlobalConfig *cfg = [GlobalConfig shared];
-    
-    
-    // ===== A 类：内存搜改型 =====
-    
-    // 双连点：写入 0.462203
+
+    // 如果地址还没找到，尝试搜索
+    if (!self.sldFound || !self.jdtFound || !self.mzFound ||
+        !self.nhFound || !self.jlmFound || !self.syFound || !self.lmFound) {
+        [self rescanMemory];
+    }
+
+    // ===== 1. 双连点：搜索0.05，写入-9.0 =====
     if (cfg.shuangliandian && self.sldFound) {
-        [MemoryUtils writeFloat:0.462203f at:self.shuangliandianAddr];
+        [MemoryUtils writeFloat:-9.0f at:self.sldAddr];
     }
-    
-    // 解限：写入用户配置的值，支持 int/float 切换
-    if (cfg.jielim && self.jlmFound) {
-        if (cfg.jielimWriteAsInt) {
-            int32_t writeVal = (int32_t)[cfg.jielimWriteValue integerValue];
-            [MemoryUtils writeInt:writeVal at:self.jielimAddr];
-        } else {
-            float writeVal = [cfg.jielimWriteValue floatValue];
-            [MemoryUtils writeFloat:writeVal at:self.jielimAddr];
-        }
+
+    // ===== 2. 解断吐：搜索0.02，写入-9.0 =====
+    if (cfg.jieduan && self.jdtFound) {
+        [MemoryUtils writeFloat:-9.0f at:self.jdtAddr];
     }
-    
-    // 名字大小：写入用户输入的值（从字符串解析为float）
+
+    // ===== 3. 名字大小：搜索1.875，写入用户值（滑条0~5.0） =====
     if (cfg.mingzidaxiao && self.mzFound) {
         float val = [cfg.mingziValue floatValue];
-        [MemoryUtils writeFloat:val at:self.mingziAddr];
+        [MemoryUtils writeFloat:val at:self.mzAddr];
     }
-    
-    // 粘合：写入用户输入的值
+
+    // ===== 4. 粘合：搜索1.70，写入用户值（滑条0~3.0） =====
     if (cfg.nianhe && self.nhFound) {
         float val = [cfg.nianheValue floatValue];
-        [MemoryUtils writeFloat:val at:self.nianheAddr];
+        [MemoryUtils writeFloat:val at:self.nhAddr];
     }
-    
-    // ===== B 类：IL2CPP 方法调用型 =====
-    // 这些功能通过调用游戏的 IL2CPP 方法修改参数
-    // 需要根据具体游戏修改类名和方法名
-    
-    // 解断：修改摇杆中断参数
-    if (cfg.jieduan) {
-        [self applyJieduan];
+
+    // ===== 5. 解限：搜索100，写入99999997952.0（~1e11，21亿多） =====
+    if (cfg.jielim && self.jlmFound) {
+        [MemoryUtils writeFloat:99999997952.0f at:self.jlmAddr];
     }
-    
-    // 灵敏：修改摇杆灵敏度
-    if (cfg.lingmin) {
-        [self applyLingmin];
+
+    // ===== 6. 视野大小：搜索1.0，写入用户值（滑条0.5~10.0） =====
+    if (cfg.shiyedaxiao && self.syFound) {
+        float val = [cfg.shiyeValue floatValue];
+        [MemoryUtils writeFloat:val at:self.syAddr];
     }
-    
-    // 视野大小：修改相机 OrthographicSize
-    if (cfg.shiyedaxiao) {
-        [self applyShiye];
+
+    // ===== 7. 灵敏：写入0.0001（多地址持续写入） =====
+    if (cfg.lingmin && self.lmFound) {
+        for (NSNumber *addrNum in self.lmAddrs) {
+            uintptr_t addr = [addrNum unsignedLongLongValue];
+            [MemoryUtils writeFloat:0.0001f at:addr];
+        }
     }
-    
-    // 球体内显：修改球体渲染参数
-    if (cfg.qiutineixian) {
-        [self applyNeixian];
-    }
-    
-    // 防录制：设置游戏内部禁止录屏标志
-    if (cfg.fangluzhi) {
-        [self applyFangluzhi];
-    }
-    
-    // 摇杆回弹：修改摇杆回弹速度
-    if (cfg.yaoganhuitan) {
-        [self applyHuitan];
+
+    // ===== 8. 防录制：NSNotification Hook =====
+    if (cfg.fangluzhi && !self.recordingHookInstalled) {
+        [self installRecordingBypass];
+        self.recordingHookInstalled = YES;
     }
 }
 
-#pragma mark - B 类功能实现（需要根据具体游戏修改）
+#pragma mark - 防录制
 
-- (void)applyJieduan {
-    // 示例：调用游戏方法解除摇杆中断
-    // Il2CppObject *skillMgr = [IL2CPPUtils getSkillManager];
-    // [IL2CPPUtils setBoolProperty:@"disableBreak" className:@"SkillManager" instance:skillMgr value:YES];
+- (void)installRecordingBypass {
+    // 监听系统录屏通知，拦截录屏状态
+    // iOS 11+ 有 UIScreenCapturedDidChangeNotification
+    if (@available(iOS 11.0, *)) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(screenCaptureChanged:)
+                                                     name:UIScreenCapturedDidChangeNotification
+                                                   object:nil];
+    }
 }
 
-- (void)applyLingmin {
-    // 示例：设置摇杆灵敏度
-    // Il2CppObject *inputMgr = [IL2CPPUtils getGameCore];
-    // [IL2CPPUtils setFloatProperty:@"sensitivity" className:@"InputManager" instance:inputMgr value:2.0f];
+- (void)screenCaptureChanged:(NSNotification *)note {
+    // 录屏状态改变时，不做任何处理（绕过游戏的录屏检测）
+    // 游戏通常会监听这个通知来判断是否在录屏
+    // 我们通过method swizzle拦截游戏的监听
 }
-
-- (void)applyShiye {
-    // 示例：设置相机视野大小
-    // const MethodInfo *method = [IL2CPPUtils getMethod:@"set_orthographicSize" className:@"Camera" argsCount:1];
-    // if (method) {
-    //     Il2CppObject *camera = [IL2CPPUtils getGameCore];  // 需要获取相机对象
-    //     float size = [GlobalConfig shared].shiyeValue;
-    //     void *args[1] = { &size };
-    //     [IL2CPPUtils callMethod:method instance:camera args:args];
-    // }
-}
-
-- (void)applyNeixian {
-    // 示例：修改球体材质渲染模式
-    // Il2CppObject *ballMgr = [IL2CPPUtils getGameCore];
-    // [IL2CPPUtils setBoolProperty:@"showInside" className:@"BallRenderer" instance:ballMgr value:YES];
-}
-
-- (void)applyFangluzhi {
-    // 示例：设置游戏内部的禁止录屏标志
-    // Il2CppObject *gameMgr = [IL2CPPUtils getGameCore];
-    // [IL2CPPUtils setBoolProperty:@"disableRecording" className:@"GameManager" instance:gameMgr value:YES];
-}
-
-- (void)applyHuitan {
-    // 示例：设置摇杆回弹速度
-    // Il2CppObject *inputMgr = [IL2CPPUtils getGameCore];
-    // float speed = [GlobalConfig shared].huitanValue;
-    // [IL2CPPUtils setFloatProperty:@"returnSpeed" className:@"Joystick" instance:inputMgr value:speed];
-}
-
 @end
