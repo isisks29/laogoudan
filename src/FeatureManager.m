@@ -110,6 +110,7 @@
     // 双连点：搜索 0.05
     if (cfg.shuangliandian && !self.sldFound) {
         NSArray *results = [MemoryUtils searchFloat:0.05f tolerance:0.0001f maxResults:kMaxResults];
+        _sldResultCount = results.count;
         if (results.count > 0) {
             self.sldAddrs = [results mutableCopy];
             self.sldFound = YES;
@@ -119,6 +120,7 @@
     // 解断吐：搜索 0.02
     if (cfg.jieduan && !self.jdtFound) {
         NSArray *results = [MemoryUtils searchFloat:0.02f tolerance:0.0001f maxResults:kMaxResults];
+        _jdtResultCount = results.count;
         if (results.count > 0) {
             self.jdtAddrs = [results mutableCopy];
             self.jdtFound = YES;
@@ -128,6 +130,7 @@
     // 名字大小：搜索 1.875
     if (cfg.mingzidaxiao && !self.mzFound) {
         NSArray *results = [MemoryUtils searchFloat:1.875f tolerance:0.0001f maxResults:kMaxResults];
+        _mzResultCount = results.count;
         if (results.count > 0) {
             self.mzAddrs = [results mutableCopy];
             self.mzFound = YES;
@@ -137,6 +140,7 @@
     // 粘合：搜索 1.70
     if (cfg.nianhe && !self.nhFound) {
         NSArray *results = [MemoryUtils searchFloat:1.70f tolerance:0.0001f maxResults:kMaxResults];
+        _nhResultCount = results.count;
         if (results.count > 0) {
             self.nhAddrs = [results mutableCopy];
             self.nhFound = YES;
@@ -146,6 +150,7 @@
     // 解限：搜索 100.0
     if (cfg.jielim && !self.jlmFound) {
         NSArray *results = [MemoryUtils searchFloat:100.0f tolerance:0.0001f maxResults:kMaxResults];
+        _jlmResultCount = results.count;
         if (results.count > 0) {
             self.jlmAddrs = [results mutableCopy];
             self.jlmFound = YES;
@@ -155,6 +160,7 @@
     // 视野：搜索 1.0
     if (cfg.shiyedaxiao && !self.syFound) {
         NSArray *results = [MemoryUtils searchFloat:1.0f tolerance:0.0001f maxResults:kMaxResults];
+        _syResultCount = results.count;
         if (results.count > 0) {
             self.syAddrs = [results mutableCopy];
             self.syFound = YES;
@@ -164,6 +170,7 @@
     // 灵敏：搜索 0.0001（多地址）
     if (cfg.lingmin && !self.lmFound) {
         NSArray *results = [MemoryUtils searchFloat:0.0001f tolerance:0.00001f maxResults:kMaxResults];
+        _lmResultCount = results.count;
         if (results.count > 0) {
             self.lmAddrs = [results mutableCopy];
             self.lmFound = YES;
@@ -234,5 +241,4 @@
         }
     }
 }
-
 @end
