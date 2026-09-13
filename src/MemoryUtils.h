@@ -15,6 +15,8 @@
 + (mach_port_t)taskPort;
 // 搜索内存中值为 target 的 float 地址（限制最大结果数，避免卡顿）
 + (NSArray<NSNumber *> *)searchFloat:(float)target maxResults:(NSUInteger)max;
++ (NSArray<NSNumber *> *)searchInt:(int32_t)target;
++ (BOOL)writeInt:(int32_t)value at:(uintptr_t)addr;
 
 // 搜索内存中值为 target 的 float 地址（带容差）
 + (NSArray<NSNumber *> *)searchFloat:(float)target tolerance:(float)tolerance maxResults:(NSUInteger)max;
