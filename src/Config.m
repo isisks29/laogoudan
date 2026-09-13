@@ -59,7 +59,7 @@
     _shuangliandian = NO;
     _jielim = NO;
     _lingmin = NO;
-    _jieduan = NO;
+    _jieduantu = NO;
     _mingzidaxiao = NO;
     _nianhe = NO;
     _shiyedaxiao = NO;
@@ -73,7 +73,7 @@
     _mingziValue = @"1.875";   // 名字大小：搜索1.875，滑条0~5.0
     _nianheValue = @"1.7";     // 粘合：搜索1.70，滑条0~3.0
     _shiyeValue = @"1.0";      // 视野：搜索1.0，滑条0.5~10.0
-    _huitanValue = @"1.0";
+    
 
     // 解限：搜索100，写入99999997952.0（~1e11，21亿多）
     _jielimWriteValue = @"99999997952";
@@ -107,7 +107,7 @@
     [ud setObject:_mingziValue forKey:@"v_mingzi"];
     [ud setObject:_nianheValue forKey:@"v_nianhe"];
     [ud setObject:_shiyeValue forKey:@"v_shiye"];
-    [ud setObject:_huitanValue forKey:@"v_huitan"];
+    
 
     [ud setObject:_jielimWriteValue forKey:@"jl_write"];
     [ud setBool:_jielimWriteAsInt forKey:@"jl_asint"];
@@ -137,7 +137,7 @@
     if ([ud objectForKey:@"v_mingzi"]) _mingziValue = [ud stringForKey:@"v_mingzi"];
     if ([ud objectForKey:@"v_nianhe"]) _nianheValue = [ud stringForKey:@"v_nianhe"];
     if ([ud objectForKey:@"v_shiye"]) _shiyeValue = [ud stringForKey:@"v_shiye"];
-    if ([ud objectForKey:@"v_huitan"]) _huitanValue = [ud stringForKey:@"v_huitan"];
+   
     if ([ud objectForKey:@"jl_write"]) _jielimWriteValue = [ud stringForKey:@"jl_write"];
     if ([ud objectForKey:@"jl_asint"]) _jielimWriteAsInt = [ud boolForKey:@"jl_asint"];
     if ([ud objectForKey:@"jl_search"]) _jielimSearchValue = [ud stringForKey:@"jl_search"];
@@ -157,7 +157,7 @@
     _shiyedaxiao = NO;
     _qiutineixian = NO;
     _fangluzhi = NO;
-    _yaoganhuitan = NO;
+    
     _peelEnabled = NO;
     _shiliufen.enabled = NO;
     _tuqiu.enabled = NO;
