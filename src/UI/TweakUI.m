@@ -453,17 +453,7 @@
     [tab addSubview:sySlider];
     y += 70;
 
-    // 回弹数值（保留弹窗输入）
-    InputRow *huitanInput = [[InputRow alloc] initWithTitle:@"回弹数值" value:cfg.huitanValue];
-    huitanInput.frame = CGRectMake(12, y, w - 24, 40);
-    huitanInput.onInput = ^(NSString *value) {
-        cfg.huitanValue = value;
-        [cfg save];
-    };
-    [tab addSubview:huitanInput];
-    y += 50;
-
-    y += 8;
+    
 
     // 解限配置（保留，默认值已改好）
     UILabel *jlTitle = [[UILabel alloc] initWithFrame:CGRectMake(14, y, w - 28, 20)];
