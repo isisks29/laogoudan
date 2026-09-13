@@ -15,7 +15,41 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        [self resetDefaults];
+        // ===== 8种数值功能（全部默认关闭）=====
+        _shuangliandian = NO;
+        _jieduantu = NO;
+        _mingzidaxiao = NO;
+        _nianhe = NO;
+        _jielim = NO;
+        _shiyedaxiao = NO;
+        _fangluzhi = NO;
+        _lingmin = NO;
+        
+        // 次要功能（默认关闭）
+        _qiutineixian = NO;
+        _yaoganhuitan = NO;
+        
+        // ===== 功能数值默认值 =====
+        _mingziValue = @"1.875";    // 名字大小搜索值=写入默认值
+        _nianheValue = @"1.7";       // 粘合搜索值=写入默认值
+        _shiyeValue = @"1.0";        // 视野默认值
+        
+        // ===== 解限配置 =====
+        _jielimWriteValue = @"4294967296";  // 2^32
+        _jielimWriteAsInt = YES;             // 按int写入
+        _jielimSearchValue = @"100";         // 搜索值
+        
+        // ===== 美化 =====
+        _peelEnabled = NO;
+        _debugMode = NO;
+        
+        // ===== 宏默认配置 =====
+        _shiliufen = (MacroConfig){NO, 0.85f, 0.75f, 35.0f, 47.0f, 20.0f};
+        _tuqiu = (MacroConfig){NO, 0.75f, 0.85f, 40.0f, 50.0f, 30.0f};
+        _sifen = (MacroConfig){NO, 0.90f, 0.65f, 30.0f, 30.0f, 100.0f};
+        
+        _menuVisible = NO;
+        _currentTab = 1;
     }
     return self;
 }
@@ -60,7 +94,7 @@
     [ud setBool:_shuangliandian forKey:@"f_sld"];
     [ud setBool:_jielim forKey:@"f_jlm"];
     [ud setBool:_lingmin forKey:@"f_lm"];
-    [ud setBool:_jieduan forKey:@"f_jd"];
+    [ud setBool:_jieduantu forKey:@"f_jd"];
     [ud setBool:_mingzidaxiao forKey:@"f_mzdx"];
     [ud setBool:_nianhe forKey:@"f_nh"];
     [ud setBool:_shiyedaxiao forKey:@"f_sydx"];
@@ -117,7 +151,7 @@
     _shuangliandian = NO;
     _jielim = NO;
     _lingmin = NO;
-    _jieduan = NO;
+    _jieduantu = NO;
     _mingzidaxiao = NO;
     _nianhe = NO;
     _shiyedaxiao = NO;
