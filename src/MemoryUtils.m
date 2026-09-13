@@ -76,6 +76,55 @@
     return results;
 }
 
++ (NSArray<NSNumber *> *)searchFloat:(float)target maxResults:(NSUInteger)max {
+    NSMutableArray *results = [NSMutableArray array];
+    uint32_t targetBits;
+    memcpy(&targetBits, &target, sizeof(float));
+    
+    [self enumerateRegions:^(uintptr_t start, size_t size, BOOL *stop) {
+        if (results.count >= max) { *stop = YES; return; }
+        
+        vm_offset_t data = 0;
+        mach_msg_type_number_t dataSize = 0;
+        kern_return_t kr = vm_read([self taskPort], start, (vm_size_t)size, &data, &dataSize);
+        if (kr != KERN_SUCCESS) return;
+        
+        uint32_t *ptr = (uint32_t *)data;
+        size_t count = dataSize / sizeof(uint32_t);
+        for (size_t i = 0; i < count && results.count < max; i++) {
+            if (ptr[i] == targetBits) {
+                [results addObject:@(start + i * sizeof(uint32_t))];
+            }
+        }
+        vm_deallocate([self taskPort], data, dataSize);
+    }];
+    
+    return results;
+}
+
++ (NSArray<NSNumber *> *)searchFloat:(float)target tolerance:(float)tolerance maxResults:(NSUInteger)max {
+    NSMutableArray *results = [NSMutableArray array];
+    
+    [self enumerateRegions:^(uintptr_t start, size_t size, BOOL *stop) {
+        if (results.count >= max) { *stop = YES; return; }
+        
+        vm_offset_t data = 0;
+        mach_msg_type_number_t dataSize = 0;
+        kern_return_t kr = vm_read([self taskPort], start, (vm_size_t)size, &data, &dataSize);
+        if (kr != KERN_SUCCESS) return;
+        
+        float *ptr = (float *)data;
+        size_t count = dataSize / sizeof(float);
+        for (size_t i = 0; i < count && results.count < max; i++) {
+            if (fabsf(ptr[i] - target) <= tolerance) {
+                [results addObject:@(start + i * sizeof(float))];
+            }
+        }
+        vm_deallocate([self taskPort], data, dataSize);
+    }];
+    
+    return results;
+}
 + (BOOL)writeFloat:(float)value at:(uintptr_t)addr {
     return [self writeData:[NSData dataWithBytes:&value length:sizeof(float)] at:addr];
 }
