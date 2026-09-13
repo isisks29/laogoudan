@@ -13,5 +13,10 @@
 + (float)readFloatAt:(uintptr_t)addr;
 // 获取进程任务端口
 + (mach_port_t)taskPort;
+// 搜索内存中值为 target 的 float 地址（限制最大结果数，避免卡顿）
++ (NSArray<NSNumber *> *)searchFloat:(float)target maxResults:(NSUInteger)max;
+
+// 搜索内存中值为 target 的 float 地址（带容差）
++ (NSArray<NSNumber *> *)searchFloat:(float)target tolerance:(float)tolerance maxResults:(NSUInteger)max;
 @end
 #endif // MEMORY_UTILS_H
