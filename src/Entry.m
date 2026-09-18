@@ -1,9 +1,13 @@
 #include <dlfcn.h>
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import "Config.h"
 
 __attribute__((constructor))
 void dylib_initialize(void)
 {
-    NSLog(@"[GameTweak] dylib loaded!");
+    @autoreleasepool {
+        NSLog(@"[GT] dylib constructor enter");
+        [[GlobalConfig shared] load];
+        NSLog(@"[GT] GlobalConfig load done");
+    }
 }
