@@ -2,10 +2,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import "Config.h"
-#import "AntiDetect.h"
-#import "FeatureManager.h"
 #import "MacroManager.h"
-#import "PeelManager.h"
 #import "UI/TweakUI.h"
 
 static void doInitialize(void);
@@ -40,12 +37,8 @@ void dylib_initialize(void)
 
 static void doInitialize(void) {
     @autoreleasepool {
-        [[AntiDetect sharedInstance] startProtect];
-        [[FeatureManager sharedManager] startLoop];  // 关键：启动循环写入+内存搜索
+        // 完全禁用反检测和功能，只保留宏和 UI
         [[MacroManager shared] setup];
         [TweakUI showFloatingWindow];
-        if ([GlobalConfig shared].peelEnabled) {
-            [[PeelManager shared] startPeel];
-        }
     }
 }
