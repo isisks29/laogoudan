@@ -37,7 +37,7 @@ void dylib_initialize(void)
 
 static void doInitialize(void) {
     @autoreleasepool {
-        // 完全禁用反检测和功能，只保留宏和 UI
+        // 只保留 UI 和宏功能
         [[MacroManager shared] setup];
         [TweakUI showFloatingWindow];
     }
