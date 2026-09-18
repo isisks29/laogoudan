@@ -266,16 +266,45 @@
 
 - (void)setupFloatButton {
     if (self.floatWindow) return;
-    self.floatWindow = [[PassThroughWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-    self.floatWindow.windowLevel = UIWindowLevelAlert + 100;
-    self.floatWindow.backgroundColor = [UIColor clearColor];
-    self.floatWindow.hidden = NO;
-
-    self.overlayView = [[UIView alloc] initWithFrame:self.floatWindow.bounds];
-    self.overlayView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.3];
-    self.overlayView.hidden = YES;
-    [self.floatWindow addSubview:self.overlayView];
-
+    
+    // iOS 13+ 正确获取 keyWindow
+    UIWindow *keyWindow = nil;
+    for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            for (UIWindow *w in scene.windows) {
+                if (w.isKeyWindow) {
+                    keyWindow = w;
+                    break;
+                }
+            }
+        }
+        if (keyWindow) break;
+    }
+    
+    // 如果没找到 keyWindow，用第一个可见 window
+    if (!keyWindow) {
+        for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                for (UIWindow *w in scene.windows) {
+                    if (!w.hidden) {
+                        keyWindow = w;
+                        break;
+                    }
+                }
+            }
+            if (keyWindow) break;
+        }
+    }
+    
+    if (!keyWindow) {
+        NSLog(@"[TweakUI] ERROR: No keyWindow found!");
+        return;
+    }
+    
+    // 不再创建新的 UIWindow，直接用现有的 keyWindow
+    self.floatWindow = (PassThroughWindow *)keyWindow;
+    
+    // 悬浮球
     self.floatButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.floatButton.frame = CGRectMake(20, 100, 50, 50);
     self.floatButton.backgroundColor = COLOR_ACCENT;
@@ -284,13 +313,13 @@
     self.floatButton.titleLabel.font = [UIFont systemFontOfSize:22];
     [self.floatButton addTarget:self action:@selector(toggleMenu) forControlEvents:UIControlEventTouchUpInside];
     [self.floatWindow addSubview:self.floatButton];
-
+    
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragFloat:)];
     [self.floatButton addGestureRecognizer:pan];
-
+    
+    // 挂载宏按钮到悬浮窗
     [[MacroManager shared] setupMacroButtonsInWindow:self.floatWindow];
 }
-
 - (void)dragFloat:(UIPanGestureRecognizer *)pan {
     CGPoint pt = [pan translationInView:self.floatWindow];
     CGPoint center = self.floatButton.center;
