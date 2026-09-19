@@ -5,11 +5,9 @@
 #import "../MacroManager.h"
 
 #define COLOR_BG [UIColor colorWithWhite:0.12 alpha:0.95]
-#define COLOR_CELL [UIColor colorWithWhite:0.18 alpha:1.0]
 #define COLOR_TEXT [UIColor whiteColor]
 #define COLOR_ACCENT [UIColor colorWithRed:0.25 green:0.55 blue:1.0 alpha:1.0]
 
-#pragma mark - 主 UI
 @interface TweakUI ()
 @property (strong) UIWindow *floatWindow;
 @property (strong) UIButton *floatButton;
@@ -34,7 +32,6 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.floatWindow) return;
         
-        // iOS 13+ 正确方式：获取 keyWindowScene
         UIWindowScene *keyScene = nil;
         for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
             if ([scene isKindOfClass:[UIWindowScene class]]) {
@@ -44,7 +41,6 @@
                 }
             }
         }
-        
         if (!keyScene) {
             for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
                 if ([scene isKindOfClass:[UIWindowScene class]]) {
@@ -53,20 +49,14 @@
                 }
             }
         }
+        if (!keyScene) return;
         
-        if (!keyScene) {
-            NSLog(@"[TweakUI] ERROR: No keyWindowScene!");
-            return;
-        }
-        
-        // 用 initWithWindowScene: 创建（iOS 13+ 正确方式）
         self.floatWindow = [[UIWindow alloc] initWithWindowScene:keyScene];
         self.floatWindow.frame = keyScene.coordinateSpace.bounds;
         self.floatWindow.windowLevel = UIWindowLevelAlert + 100;
         self.floatWindow.backgroundColor = [UIColor clearColor];
         self.floatWindow.hidden = NO;
         
-        // 悬浮球按钮
         self.floatButton = [UIButton buttonWithType:UIButtonTypeCustom];
         self.floatButton.frame = CGRectMake(20, 100, 50, 50);
         self.floatButton.backgroundColor = COLOR_ACCENT;
@@ -76,14 +66,10 @@
         [self.floatButton addTarget:self action:@selector(toggleMenu) forControlEvents:UIControlEventTouchUpInside];
         [self.floatWindow addSubview:self.floatButton];
         
-        // 拖动悬浮球
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragFloat:)];
         [self.floatButton addGestureRecognizer:pan];
         
-        // 创建菜单
         [self setupMenu];
-        
-        // 挂载宏按钮
         [[MacroManager shared] setupMacroButtonsInWindow:self.floatWindow];
         
         NSLog(@"[TweakUI] UI setup complete!");
@@ -100,7 +86,6 @@
     self.menuView.alpha = 0;
     [self.floatWindow addSubview:self.menuView];
     
-    // 关闭按钮
     UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
     closeBtn.frame = CGRectMake(w - 40, 8, 32, 32);
     [closeBtn setTitle:@"✕" forState:UIControlStateNormal];
@@ -109,7 +94,6 @@
     [closeBtn addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
     [self.menuView addSubview:closeBtn];
     
-    // 标题
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20, 10, w - 80, 32)];
     title.text = @"GameTweak";
     title.textColor = COLOR_TEXT;
@@ -118,59 +102,52 @@
     
     CGFloat y = 60;
     
-    // 调试模式开关
+    // 调试模式
     UISwitch *sw1 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
     sw1.on = [GlobalConfig shared].debugMode;
     [sw1 addTarget:self action:@selector(debugSwitchChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:sw1];
-    
-    UILabel *sw1Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
-    sw1Label.text = @"调试模式（可拖动宏按钮）";
-    sw1Label.textColor = COLOR_TEXT;
-    sw1Label.font = [UIFont systemFontOfSize:14];
-    [self.menuView addSubview:sw1Label];
-    
+    UILabel *l1 = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 220, 31)];
+    l1.text = @"调试模式（可拖动宏按钮）";
+    l1.textColor = COLOR_TEXT;
+    l1.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:l1];
     y += 50;
     
-    // 16分宏开关
+    // 16分宏
     UISwitch *sw2 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
     sw2.on = [GlobalConfig shared].shiliufen.enabled;
     [sw2 addTarget:self action:@selector(shiliufenSwitchChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:sw2];
-    
-    UILabel *sw2Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
-    sw2Label.text = @"16分宏";
-    sw2Label.textColor = COLOR_TEXT;
-    sw2Label.font = [UIFont systemFontOfSize:14];
-    [self.menuView addSubview:sw2Label];
-    
+    UILabel *l2 = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 220, 31)];
+    l2.text = @"16分宏";
+    l2.textColor = COLOR_TEXT;
+    l2.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:l2];
     y += 50;
     
-    // 吐球宏开关
+    // 吐球宏
     UISwitch *sw3 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
     sw3.on = [GlobalConfig shared].tuqiu.enabled;
     [sw3 addTarget:self action:@selector(tuqiuSwitchChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:sw3];
-    
-    UILabel *sw3Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
-    sw3Label.text = @"吐球宏";
-    sw3Label.textColor = COLOR_TEXT;
-    sw3Label.font = [UIFont systemFontOfSize:14];
-    [self.menuView addSubview:sw3Label];
-    
+    UILabel *l3 = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 220, 31)];
+    l3.text = @"吐球宏";
+    l3.textColor = COLOR_TEXT;
+    l3.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:l3];
     y += 50;
     
-    // 4分宏开关
+    // 4分宏
     UISwitch *sw4 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
     sw4.on = [GlobalConfig shared].sifen.enabled;
     [sw4 addTarget:self action:@selector(sifenSwitchChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:sw4];
-    
-    UILabel *sw4Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
-    sw4Label.text = @"4分宏";
-    sw4Label.textColor = COLOR_TEXT;
-    sw4Label.font = [UIFont systemFontOfSize:14];
-    [self.menuView addSubview:sw4Label];
+    UILabel *l4 = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 220, 31)];
+    l4.text = @"4分宏";
+    l4.textColor = COLOR_TEXT;
+    l4.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:l4];
 }
 
 - (void)debugSwitchChanged:(UISwitch *)sw {
@@ -200,10 +177,6 @@
     [GlobalConfig shared].sifen = mc;
     [[GlobalConfig shared] save];
     [[MacroManager shared] updateButtonPositions];
-}
-- (void)debugSwitchChanged:(UISwitch *)sw {
-    [GlobalConfig shared].debugMode = sw.on;
-    [[GlobalConfig shared] save];
 }
 
 - (void)toggleMenu {
