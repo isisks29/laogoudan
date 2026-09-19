@@ -27,6 +27,16 @@
 + (void)showFloatingWindow {
     [[TweakUI shared] setupUI];
 }
+// 自定义 PassThroughWindow，让触摸事件穿透
+@interface PassThroughWindow : UIWindow
+@end
+@implementation PassThroughWindow
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *view = [super hitTest:point withEvent:event];
+    if (view == self) return nil;
+    return view;
+}
+@end
 
 - (void)setupUI {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -51,12 +61,14 @@
         }
         if (!keyScene) return;
         
-        self.floatWindow = [[UIWindow alloc] initWithWindowScene:keyScene];
+        // 用 PassThroughWindow 创建（触摸事件穿透）
+        self.floatWindow = [[PassThroughWindow alloc] initWithWindowScene:keyScene];
         self.floatWindow.frame = keyScene.coordinateSpace.bounds;
         self.floatWindow.windowLevel = UIWindowLevelAlert + 100;
         self.floatWindow.backgroundColor = [UIColor clearColor];
         self.floatWindow.hidden = NO;
         
+        // 悬浮球
         self.floatButton = [UIButton buttonWithType:UIButtonTypeCustom];
         self.floatButton.frame = CGRectMake(20, 100, 50, 50);
         self.floatButton.backgroundColor = COLOR_ACCENT;
