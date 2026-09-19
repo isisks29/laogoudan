@@ -116,19 +116,91 @@
     title.font = [UIFont boldSystemFontOfSize:18];
     [self.menuView addSubview:title];
     
-    // 简单的开关示例
-    UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(20, 60, 51, 31)];
-    sw.on = [GlobalConfig shared].debugMode;
-    [sw addTarget:self action:@selector(debugSwitchChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.menuView addSubview:sw];
+    CGFloat y = 60;
     
-    UILabel *swLabel = [[UILabel alloc] initWithFrame:CGRectMake(85, 60, 200, 31)];
-    swLabel.text = @"调试模式（可拖动宏按钮）";
-    swLabel.textColor = COLOR_TEXT;
-    swLabel.font = [UIFont systemFontOfSize:14];
-    [self.menuView addSubview:swLabel];
+    // 调试模式开关
+    UISwitch *sw1 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
+    sw1.on = [GlobalConfig shared].debugMode;
+    [sw1 addTarget:self action:@selector(debugSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.menuView addSubview:sw1];
+    
+    UILabel *sw1Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
+    sw1Label.text = @"调试模式（可拖动宏按钮）";
+    sw1Label.textColor = COLOR_TEXT;
+    sw1Label.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:sw1Label];
+    
+    y += 50;
+    
+    // 16分宏开关
+    UISwitch *sw2 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
+    sw2.on = [GlobalConfig shared].shiliufen.enabled;
+    [sw2 addTarget:self action:@selector(shiliufenSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.menuView addSubview:sw2];
+    
+    UILabel *sw2Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
+    sw2Label.text = @"16分宏";
+    sw2Label.textColor = COLOR_TEXT;
+    sw2Label.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:sw2Label];
+    
+    y += 50;
+    
+    // 吐球宏开关
+    UISwitch *sw3 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
+    sw3.on = [GlobalConfig shared].tuqiu.enabled;
+    [sw3 addTarget:self action:@selector(tuqiuSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.menuView addSubview:sw3];
+    
+    UILabel *sw3Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
+    sw3Label.text = @"吐球宏";
+    sw3Label.textColor = COLOR_TEXT;
+    sw3Label.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:sw3Label];
+    
+    y += 50;
+    
+    // 4分宏开关
+    UISwitch *sw4 = [[UISwitch alloc] initWithFrame:CGRectMake(20, y, 51, 31)];
+    sw4.on = [GlobalConfig shared].sifen.enabled;
+    [sw4 addTarget:self action:@selector(sifenSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.menuView addSubview:sw4];
+    
+    UILabel *sw4Label = [[UILabel alloc] initWithFrame:CGRectMake(85, y, 200, 31)];
+    sw4Label.text = @"4分宏";
+    sw4Label.textColor = COLOR_TEXT;
+    sw4Label.font = [UIFont systemFontOfSize:14];
+    [self.menuView addSubview:sw4Label];
 }
 
+- (void)debugSwitchChanged:(UISwitch *)sw {
+    [GlobalConfig shared].debugMode = sw.on;
+    [[GlobalConfig shared] save];
+}
+
+- (void)shiliufenSwitchChanged:(UISwitch *)sw {
+    MacroConfig mc = [GlobalConfig shared].shiliufen;
+    mc.enabled = sw.on;
+    [GlobalConfig shared].shiliufen = mc;
+    [[GlobalConfig shared] save];
+    [[MacroManager shared] updateButtonPositions];
+}
+
+- (void)tuqiuSwitchChanged:(UISwitch *)sw {
+    MacroConfig mc = [GlobalConfig shared].tuqiu;
+    mc.enabled = sw.on;
+    [GlobalConfig shared].tuqiu = mc;
+    [[GlobalConfig shared] save];
+    [[MacroManager shared] updateButtonPositions];
+}
+
+- (void)sifenSwitchChanged:(UISwitch *)sw {
+    MacroConfig mc = [GlobalConfig shared].sifen;
+    mc.enabled = sw.on;
+    [GlobalConfig shared].sifen = mc;
+    [[GlobalConfig shared] save];
+    [[MacroManager shared] updateButtonPositions];
+}
 - (void)debugSwitchChanged:(UISwitch *)sw {
     [GlobalConfig shared].debugMode = sw.on;
     [[GlobalConfig shared] save];
