@@ -1,6 +1,5 @@
 // AntiDetect.m — 完整反检测（参考 ballsace 方式）
-// 核心：伪装 bundle ID 为 com.juzi.balls
-// 从 com.juzi.bals → com.juzi.balls
+// 核心：伪装 bundle ID + 隐藏越狱路径 + 不用 fishhook
 
 #import "AntiDetect.h"
 #import <Foundation/Foundation.h>
@@ -9,6 +8,7 @@
 
 static IMP orig_bundleIdentifier = NULL;
 static IMP orig_objectForInfoDictionaryKey = NULL;
+static IMP orig_fileExistsAtPath = NULL;
 
 @implementation AntiDetect
 
@@ -29,7 +29,7 @@ static IMP orig_objectForInfoDictionaryKey = NULL;
     // 1. 伪装 bundle ID（核心！）
     [self installBundleIdSpoof];
     
-    // 2. 隐藏越狱路径（可选，但加上更安全）
+    // 2. 隐藏越狱路径
     [self installJailbreakHide];
     
     NSLog(@"[AntiDetect] Install complete!");
