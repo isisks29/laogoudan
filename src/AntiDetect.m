@@ -1,9 +1,10 @@
-// AntiDetect.m — 安全反检测（只保留最基础的 hook）
+// AntiDetect.m — 完整反检测（method swizzle，不用fishhook）
 #import "AntiDetect.h"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
+static BOOL g_recordingBypass = NO;
 static BOOL g_isScreenCaptured = NO;
 
 @implementation AntiDetect
@@ -16,40 +17,43 @@ static BOOL g_isScreenCaptured = NO;
 }
 
 - (void)startProtect {
-    // 监听 UIApplicationDidFinishLaunchingNotification，延迟初始化
-    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification
-                                                        object:nil
-                                                         queue:[NSOperationQueue mainQueue]
-                                                    usingBlock:^(NSNotification *note) {
-        // 再延迟 1 秒，确保游戏完全启动
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.0 * NSEC_PER_SEC),
-                       dispatch_get_main_queue(), ^{
-            [AntiDetect installAll];
-        });
-    }];
+    [AntiDetect installAll];
 }
 
 + (void)installAll {
-    // 只 hook 最基础的，不要加太多
-    [self installFileHide];
+    [self installJailbreakHide];
+    [self installBundleIdFake];
     [self installRecordingBypass];
 }
 
 + (BOOL)isScreenCaptured { return g_isScreenCaptured; }
++ (void)setRecordingBypass:(BOOL)enabled { g_recordingBypass = enabled; }
 
-#pragma mark - 1. 文件检测绕过（只 hook 这两个）
+#pragma mark - 1. 越狱路径隐藏
 
-+ (void)installFileHide {
-    Method m1 = class_getInstanceMethod([NSFileManager class], @selector(fileExistsAtPath:));
-    Method m2 = class_getInstanceMethod([NSFileManager class], @selector(ad_fileExistsAtPath:));
-    if (m1 && m2) method_exchangeImplementations(m1, m2);
++ (void)installJailbreakHide {
+    Method orig1 = class_getInstanceMethod([NSFileManager class], @selector(fileExistsAtPath:));
+    Method new1 = class_getInstanceMethod([NSFileManager class], @selector(ad_fileExistsAtPath:));
+    if (orig1 && new1) method_exchangeImplementations(orig1, new1);
     
-    Method m3 = class_getInstanceMethod([NSFileManager class], @selector(isReadableFileAtPath:));
-    Method m4 = class_getInstanceMethod([NSFileManager class], @selector(ad_isReadableFileAtPath:));
-    if (m3 && m4) method_exchangeImplementations(m3, m4);
+    Method orig2 = class_getInstanceMethod([NSFileManager class], @selector(isReadableFileAtPath:));
+    Method new2 = class_getInstanceMethod([NSFileManager class], @selector(ad_isReadableFileAtPath:));
+    if (orig2 && new2) method_exchangeImplementations(orig2, new2);
 }
 
-#pragma mark - 2. 录屏状态监听
+#pragma mark - 2. Bundle ID伪装
+
++ (void)installBundleIdFake {
+    Method orig = class_getInstanceMethod([NSBundle class], @selector(bundleIdentifier));
+    Method new = class_getInstanceMethod([NSBundle class], @selector(ad_bundleIdentifier));
+    if (orig && new) method_exchangeImplementations(orig, new);
+    
+    Method orig2 = class_getInstanceMethod([NSBundle class], @selector(objectForInfoDictionaryKey:));
+    Method new2 = class_getInstanceMethod([NSBundle class], @selector(ad_objectForInfoDictionaryKey:));
+    if (orig2 && new2) method_exchangeImplementations(orig2, new2);
+}
+
+#pragma mark - 3. 录屏绕过
 
 + (void)installRecordingBypass {
     [[NSNotificationCenter defaultCenter] addObserverForName:UIScreenCapturedDidChangeNotification
@@ -57,34 +61,47 @@ static BOOL g_isScreenCaptured = NO;
                                                          queue:[NSOperationQueue mainQueue]
                                                     usingBlock:^(NSNotification *note) {
         g_isScreenCaptured = [UIScreen mainScreen].isCaptured;
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"JHRecordingBypassChanged" object:nil];
     }];
 }
 
 @end
 
 @implementation NSFileManager (AntiDetect)
-
 - (BOOL)ad_fileExistsAtPath:(NSString *)path {
     if (!path) return NO;
-    // 只拦截明确的越狱路径
-    if ([path hasPrefix:@"/Applications/Cydia.app"] ||
-        [path hasPrefix:@"/Applications/Sileo.app"] ||
-        [path hasPrefix:@"/Library/MobileSubstrate"] ||
-        [path hasPrefix:@"/usr/lib/substrate"]) {
-        return NO;
+    NSArray *jb = @[@"/Applications/Cydia.app", @"/Applications/Sileo.app",
+                     @"/Library/MobileSubstrate", @"/bin/bash", @"/etc/apt",
+                     @"/usr/sbin/sshd", @"/private/var/lib/apt"];
+    for (NSString *p in jb) {
+        if ([path containsString:p]) return NO;
     }
     return [self ad_fileExistsAtPath:path];
 }
-
 - (BOOL)ad_isReadableFileAtPath:(NSString *)path {
     if (!path) return NO;
-    if ([path hasPrefix:@"/Applications/Cydia.app"] ||
-        [path hasPrefix:@"/Applications/Sileo.app"] ||
-        [path hasPrefix:@"/Library/MobileSubstrate"] ||
-        [path hasPrefix:@"/usr/lib/substrate"]) {
-        return NO;
+    NSArray *jb = @[@"/Applications/Cydia.app", @"/Applications/Sileo.app",
+                     @"/Library/MobileSubstrate", @"/bin/bash", @"/etc/apt"];
+    for (NSString *p in jb) {
+        if ([path containsString:p]) return NO;
     }
     return [self ad_isReadableFileAtPath:path];
 }
+@end
 
+@implementation NSBundle (AntiDetect)
+- (NSString *)ad_bundleIdentifier {
+    NSString *real = [self ad_bundleIdentifier];
+    if ([real containsString:@"GameTweak"] || [real containsString:@"Tweak"]) {
+        return @"com.juzi.balls";
+    }
+    return real;
+}
+- (id)ad_objectForInfoDictionaryKey:(NSString *)key {
+    id val = [self ad_objectForInfoDictionaryKey:key];
+    if ([key containsString:@"Tweak"] || [key containsString:@"GameTweak"]) {
+        return nil;
+    }
+    return val;
+}
 @end
