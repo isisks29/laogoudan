@@ -1,7 +1,7 @@
 // TweakUI.m — 完整 UI（支持下滑 + 滑条整数显示）
 #import "TweakUI.h"
-#import "Config.h"
-#import "MacroManager.h"
+#import "../Config.h"
+#import "../MacroManager.h"
 #import <UIKit/UIKit.h>
 
 #define COLOR_BG [UIColor colorWithRed:0.1 green:0.1 blue:0.12 alpha:0.95]
