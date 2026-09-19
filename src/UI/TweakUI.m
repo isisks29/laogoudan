@@ -16,7 +16,7 @@
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *view = [super hitTest:point withEvent:event];
-    if (view == self) return nil;  // 如果点的是 window 本身，返回 nil（穿透）
+    if (view == self) return nil;
     return view;
 }
 
@@ -155,7 +155,6 @@
     szLabel.textColor = COLOR_TEXT;
     szLabel.font = [UIFont systemFontOfSize:13];
     [self.menuView addSubview:szLabel];
-    
     UISlider *szSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
     szSlider.minimumValue = 20;
     szSlider.maximumValue = 160;
@@ -170,10 +169,9 @@
     pdLabel.textColor = COLOR_TEXT;
     pdLabel.font = [UIFont systemFontOfSize:13];
     [self.menuView addSubview:pdLabel];
-    
     UISlider *pdSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
-    pdSlider.minimumValue = 10;
-    pdSlider.maximumValue = 500;
+    pdSlider.minimumValue = 5;
+    pdSlider.maximumValue = 100;
     pdSlider.value = [GlobalConfig shared].shiliufen.pressDuration;
     [pdSlider addTarget:self action:@selector(shiliufenPressChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:pdSlider];
@@ -185,10 +183,9 @@
     intLabel.textColor = COLOR_TEXT;
     intLabel.font = [UIFont systemFontOfSize:13];
     [self.menuView addSubview:intLabel];
-    
     UISlider *intSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
-    intSlider.minimumValue = 10;
-    intSlider.maximumValue = 1000;
+    intSlider.minimumValue = 5;
+    intSlider.maximumValue = 100;
     intSlider.value = [GlobalConfig shared].shiliufen.interval;
     [intSlider addTarget:self action:@selector(shiliufenIntervalChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:intSlider];
@@ -212,7 +209,6 @@
     tqSzLabel.textColor = COLOR_TEXT;
     tqSzLabel.font = [UIFont systemFontOfSize:13];
     [self.menuView addSubview:tqSzLabel];
-    
     UISlider *tqSzSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
     tqSzSlider.minimumValue = 20;
     tqSzSlider.maximumValue = 160;
@@ -227,10 +223,9 @@
     tqPdLabel.textColor = COLOR_TEXT;
     tqPdLabel.font = [UIFont systemFontOfSize:13];
     [self.menuView addSubview:tqPdLabel];
-    
     UISlider *tqPdSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
-    tqPdSlider.minimumValue = 10;
-    tqPdSlider.maximumValue = 500;
+    tqPdSlider.minimumValue = 5;
+    tqPdSlider.maximumValue = 100;
     tqPdSlider.value = [GlobalConfig shared].tuqiu.pressDuration;
     [tqPdSlider addTarget:self action:@selector(tuqiuPressChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:tqPdSlider];
@@ -242,10 +237,9 @@
     tqIntLabel.textColor = COLOR_TEXT;
     tqIntLabel.font = [UIFont systemFontOfSize:13];
     [self.menuView addSubview:tqIntLabel];
-    
     UISlider *tqIntSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
-    tqIntSlider.minimumValue = 10;
-    tqIntSlider.maximumValue = 1000;
+    tqIntSlider.minimumValue = 5;
+    tqIntSlider.maximumValue = 100;
     tqIntSlider.value = [GlobalConfig shared].tuqiu.interval;
     [tqIntSlider addTarget:self action:@selector(tuqiuIntervalChanged:) forControlEvents:UIControlEventValueChanged];
     [self.menuView addSubview:tqIntSlider];
@@ -261,6 +255,63 @@
     l4.textColor = COLOR_TEXT;
     l4.font = [UIFont boldSystemFontOfSize:16];
     [self.menuView addSubview:l4];
+    y += 45;
+    
+    // 4分 - 按钮大小滑条
+    UILabel *s4SzLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, y, 100, 25)];
+    s4SzLabel.text = @"按钮大小";
+    s4SzLabel.textColor = COLOR_TEXT;
+    s4SzLabel.font = [UIFont systemFontOfSize:13];
+    [self.menuView addSubview:s4SzLabel];
+    UISlider *s4SzSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
+    s4SzSlider.minimumValue = 20;
+    s4SzSlider.maximumValue = 160;
+    s4SzSlider.value = [GlobalConfig shared].sifen.buttonSize;
+    [s4SzSlider addTarget:self action:@selector(sifenSizeChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.menuView addSubview:s4SzSlider];
+    y += 35;
+    
+    // 4分 - 间隔滑条
+    UILabel *s4IntLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, y, 100, 25)];
+    s4IntLabel.text = @"间隔(ms)";
+    s4IntLabel.textColor = COLOR_TEXT;
+    s4IntLabel.font = [UIFont systemFontOfSize:13];
+    [self.menuView addSubview:s4IntLabel];
+    UISlider *s4IntSlider = [[UISlider alloc] initWithFrame:CGRectMake(130, y + 2, w - 150, 25)];
+    s4IntSlider.minimumValue = 5;
+    s4IntSlider.maximumValue = 100;
+    s4IntSlider.value = [GlobalConfig shared].sifen.interval;
+    [s4IntSlider addTarget:self action:@selector(sifenIntervalChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.menuView addSubview:s4IntSlider];
+}
+
+- (void)debugSwitchChanged:(UISwitch *)sw {
+    [GlobalConfig shared].debugMode = sw.on;
+    [[GlobalConfig shared] save];
+}
+
+- (void)shiliufenSwitchChanged:(UISwitch *)sw {
+    MacroConfig mc = [GlobalConfig shared].shiliufen;
+    mc.enabled = sw.on;
+    [GlobalConfig shared].shiliufen = mc;
+    [[GlobalConfig shared] save];
+    [[MacroManager shared] updateButtonPositions];
+}
+
+- (void)tuqiuSwitchChanged:(UISwitch *)sw {
+    MacroConfig mc = [GlobalConfig shared].tuqiu;
+    mc.enabled = sw.on;
+    [GlobalConfig shared].tuqiu = mc;
+    [[GlobalConfig shared] save];
+    [[MacroManager shared] updateButtonPositions];
+}
+
+- (void)sifenSwitchChanged:(UISwitch *)sw {
+    MacroConfig mc = [GlobalConfig shared].sifen;
+    mc.enabled = sw.on;
+    [GlobalConfig shared].sifen = mc;
+    [[GlobalConfig shared] save];
+    [[MacroManager shared] updateButtonPositions];
 }
 
 // 16分宏参数修改
@@ -308,33 +359,21 @@
     [GlobalConfig shared].tuqiu = mc;
     [[GlobalConfig shared] save];
 }
-- (void)debugSwitchChanged:(UISwitch *)sw {
-    [GlobalConfig shared].debugMode = sw.on;
-    [[GlobalConfig shared] save];
-}
 
-- (void)shiliufenSwitchChanged:(UISwitch *)sw {
-    MacroConfig mc = [GlobalConfig shared].shiliufen;
-    mc.enabled = sw.on;
-    [GlobalConfig shared].shiliufen = mc;
-    [[GlobalConfig shared] save];
-    [[MacroManager shared] updateButtonPositions];
-}
-
-- (void)tuqiuSwitchChanged:(UISwitch *)sw {
-    MacroConfig mc = [GlobalConfig shared].tuqiu;
-    mc.enabled = sw.on;
-    [GlobalConfig shared].tuqiu = mc;
-    [[GlobalConfig shared] save];
-    [[MacroManager shared] updateButtonPositions];
-}
-
-- (void)sifenSwitchChanged:(UISwitch *)sw {
+// 4分宏参数修改
+- (void)sifenSizeChanged:(UISlider *)slider {
     MacroConfig mc = [GlobalConfig shared].sifen;
-    mc.enabled = sw.on;
+    mc.buttonSize = slider.value;
     [GlobalConfig shared].sifen = mc;
     [[GlobalConfig shared] save];
     [[MacroManager shared] updateButtonPositions];
+}
+
+- (void)sifenIntervalChanged:(UISlider *)slider {
+    MacroConfig mc = [GlobalConfig shared].sifen;
+    mc.interval = slider.value;
+    [GlobalConfig shared].sifen = mc;
+    [[GlobalConfig shared] save];
 }
 
 - (void)toggleMenu {
