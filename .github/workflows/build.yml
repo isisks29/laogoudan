@@ -31,6 +31,8 @@ jobs:
           xcrun clang \
             -target arm64-apple-ios15.0 \
             -isysroot "$SDK_PATH" \
+            -I src \
+            -I src/UI \
             -dynamiclib \
             -fobjc-arc \
             -framework UIKit \
