@@ -10,20 +10,27 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        
       - name: Compile iOS dylib (Pure Clang, NO Theos)
         run: |
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           OUTPUT_DYLIB=GameTweak.dylib
-          SRC_FILES=()
-          while IFS= read -r file; do
-            SRC_FILES+=("$file")
-          done < <(find src -type f \( -name "*.m" -o -name "*.c" \))
+          
           echo "将要编译的源码列表:"
+          
+          # 只编译我们需要的文件！
+          SRC_FILES=(
+            "src/Entry.m"
+            "src/UI/TweakUI.m"
+            "src/AntiDetect.m"
+            "src/Config.m"
+          )
+          
           printf "%s\n" "${SRC_FILES[@]}"
+          
           xcrun clang \
             -target arm64-apple-ios15.0 \
             -isysroot "$SDK_PATH" \
-            -I src/fishhook \
             -dynamiclib \
             -fobjc-arc \
             -framework UIKit \
