@@ -82,7 +82,6 @@ extern void *g_dyld_callback;
  * 功能: 还原插件中 10 种字符串解密变体
  *       (单字节 XOR + 布尔掩码, 每串不同密钥)
  */
-#include "common.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
