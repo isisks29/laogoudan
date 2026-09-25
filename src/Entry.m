@@ -1,7 +1,7 @@
 // Entry.m — 测试版本：只创建UI，不做任何其他操作
 // 用来测试是不是UI被游戏检测到了
 
-#import "TweakUI.h"
+#import "UI/TweakUI.h"
 #import "AntiDetect.h"
 
 __attribute__((constructor))
